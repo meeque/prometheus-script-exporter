@@ -1,3 +1,6 @@
-.build
-script_exporter
-*.tar.gz
+.*
+^~
+
+*.tar.*
+
+/script_exporter
