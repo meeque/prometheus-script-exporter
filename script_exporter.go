@@ -40,6 +40,7 @@ type Script struct {
 type Measurement struct {
 	Script   *Script
 	Success  int
+	Status   int
 	Duration float64
 }
 
@@ -77,20 +78,27 @@ func runScripts(scripts []*Script) []*Measurement {
 		go func(script *Script) {
 			start := time.Now()
 			success := 0
+			status := -1
 			err := runScript(script)
 			duration := time.Since(start).Seconds()
 
 			if err == nil {
 				log.Debugf("OK: %s (after %fs).", script.Name, duration)
 				success = 1
+				status = 0
 			} else {
 				log.Infof("ERROR: %s: %s (failed after %fs).", script.Name, err, duration)
+				var exitErr *exec.ExitError
+				if errors.As(err, &exitErr) {
+					status = exitErr.ExitCode()
+				}
 			}
 
 			ch <- &Measurement{
 				Script:   script,
 				Duration: duration,
 				Success:  success,
+				Status:   status,
 			}
 		}(script)
 	}
@@ -143,6 +151,7 @@ func scriptRunHandler(w http.ResponseWriter, r *http.Request, config *Config) {
 
 	for _, measurement := range measurements {
 		fmt.Fprintf(w, "script_duration_seconds{script=\"%s\"} %f\n", measurement.Script.Name, measurement.Duration)
+		fmt.Fprintf(w, "script_status{script=\"%s\"} %d\n", measurement.Script.Name, measurement.Status)
 		fmt.Fprintf(w, "script_success{script=\"%s\"} %d\n", measurement.Script.Name, measurement.Success)
 	}
 }

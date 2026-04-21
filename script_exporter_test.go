@@ -17,18 +17,32 @@ func TestRunScripts(t *testing.T) {
 
 	expectedResults := map[string]struct {
 		success     int
+		status      int
 		minDuration float64
 	}{
-		"success": {1, 0},
-		"failure": {0, 0},
-		"timeout": {0, 2},
+		"success": {1, 0, 0},
+		"failure": {0, 1, 0},
+		"timeout": {0, -1, 2},
+	}
+
+	if len(measurements) != len(config.Scripts) {
+		t.Errorf("Expected %d measurements, received %d", len(config.Scripts), len(measurements))
 	}
 
 	for _, measurement := range measurements {
-		expectedResult := expectedResults[measurement.Script.Name]
+		expectedResult, isExpected := expectedResults[measurement.Script.Name]
+
+		if !isExpected {
+			t.Errorf("Got a measurement for an unexpected script: %s", measurement.Script.Name)
+			continue
+		}
 
 		if measurement.Success != expectedResult.success {
-			t.Errorf("Expected result not found: %s", measurement.Script.Name)
+			t.Errorf("Expected success %d != %d: %s", measurement.Success, expectedResult.success, measurement.Script.Name)
+		}
+
+		if measurement.Status != expectedResult.status {
+			t.Errorf("Expected status %d != %d: %s", measurement.Status, expectedResult.status, measurement.Script.Name)
 		}
 
 		if measurement.Duration < expectedResult.minDuration {
