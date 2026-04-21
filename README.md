@@ -52,7 +52,8 @@ To execute a script, use the `name` parameter to the `/probe` endpoint:
 `$ curl http://localhost:9172/probe?name=failure`
 
 ```
-script_duration_seconds{script="failure"} 2.008337
+script_duration_seconds{script="failure"} 2.006982
+script_status{script="failure"} 1
 script_success{script="failure"} 0
 ```
 
@@ -61,11 +62,14 @@ A regular expression may be specified with the `pattern` paremeter:
 `$ curl http://localhost:9172/probe?pattern=.*`
 
 ```
-script_duration_seconds{script="timeout"} 1.005727
+script_duration_seconds{script="timeout"} 1.002526
+script_status{script="timeout"} -1
 script_success{script="timeout"} 0
-script_duration_seconds{script="failure"} 2.015021
+script_duration_seconds{script="failure"} 2.004856
+script_status{script="failure"} 1
 script_success{script="failure"} 0
-script_duration_seconds{script="success"} 5.013670
+script_duration_seconds{script="success"} 5.006726
+script_status{script="success"} 0
 script_success{script="success"} 1
 ```
 
