@@ -4,6 +4,16 @@ import (
 	"testing"
 )
 
+
+type ExpectedMeasurement struct {
+	success     int
+	status      int
+	minDuration float64
+}
+
+type ExpectedMeasurements map[string]ExpectedMeasurement
+
+
 var config = &Config{
 	Scripts: []*Script{
 		{"success", "exit 0", 1},
@@ -12,14 +22,11 @@ var config = &Config{
 	},
 }
 
+
 func TestRunScripts(t *testing.T) {
 	measurements := runScripts(config.Scripts)
 
-	expectedResults := map[string]struct {
-		success     int
-		status      int
-		minDuration float64
-	}{
+	expectedMeasurements := ExpectedMeasurements{
 		"success": {1, 0, 0},
 		"failure": {0, 1, 0},
 		"timeout": {0, -1, 2},
@@ -30,7 +37,7 @@ func TestRunScripts(t *testing.T) {
 	}
 
 	for _, measurement := range measurements {
-		expectedResult, isExpected := expectedResults[measurement.Script.Name]
+		expectedResult, isExpected := expectedMeasurements[measurement.Script.Name]
 
 		if !isExpected {
 			t.Errorf("Got a measurement for an unexpected script: %s", measurement.Script.Name)
