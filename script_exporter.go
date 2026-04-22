@@ -46,7 +46,7 @@ type Measurement struct {
 	Success  int
 	Status   int
 	Duration float64
-	Output   string
+	Output   *any
 }
 
 type OutputType string
@@ -54,6 +54,26 @@ type OutputType string
 const (
 	Number OutputType = "number"
 )
+
+func processNumberOutput(output *bytes.Buffer) (result float64, err error) {
+	trimmedOutput := strings.TrimSpace(output.String())
+	result, err = strconv.ParseFloat(trimmedOutput, 64)
+	return
+}
+
+func processOutput(script *Script, output *bytes.Buffer) (result *any, err error) {
+	if output == nil {
+		return
+	}
+	var res any
+	switch script.Output {
+		case string(Number):
+			res, err = processNumberOutput(output)
+			return &res, err
+		default:
+			return nil, errors.New("unsupported output type")
+	}
+}
 
 func runScript(script *Script) (stdout *bytes.Buffer, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(script.Timeout)*time.Second)
@@ -85,7 +105,6 @@ func runScripts(scripts []*Script) []*Measurement {
 			start := time.Now()
 			success := 0
 			status := -1
-			output := ""
 			outBuffer, err := runScript(script)
 			duration := time.Since(start).Seconds()
 
@@ -101,8 +120,9 @@ func runScripts(scripts []*Script) []*Measurement {
 				}
 			}
 
-			if outBuffer != nil {
-				output = outBuffer.String()
+			processedOutput, err := processOutput(script, outBuffer)
+			if err != nil {
+				log.Infof("ERROR: %s: failed processing script output as %s: %s", script.Name, script.Output, err)
 			}
 
 			ch <- &Measurement{
@@ -110,7 +130,7 @@ func runScripts(scripts []*Script) []*Measurement {
 				Duration: duration,
 				Success:  success,
 				Status:   status,
-				Output:   output,
+				Output:   processedOutput,
 			}
 		}(script)
 	}
@@ -147,15 +167,6 @@ func scriptFilter(scripts []*Script, name, pattern string) (filteredScripts []*S
 	return
 }
 
-func processNumberOutput(w http.ResponseWriter, measurement *Measurement) {
-	output, err := strconv.ParseFloat(measurement.Output, 64)
-	if err != nil {
-		log.Errorf("Error parsing number from script output: %s", err)
-		return
-	}
-	fmt.Fprintf(w, "script_output{script=\"%s\"} %f\n", measurement.Script.Name, output)
-}
-
 func scriptRunHandler(w http.ResponseWriter, r *http.Request, config *Config) {
 	params := r.URL.Query()
 	name := params.Get("name")
@@ -175,9 +186,11 @@ func scriptRunHandler(w http.ResponseWriter, r *http.Request, config *Config) {
 		fmt.Fprintf(w, "script_status{script=\"%s\"} %d\n", measurement.Script.Name, measurement.Status)
 		fmt.Fprintf(w, "script_success{script=\"%s\"} %d\n", measurement.Script.Name, measurement.Success)
 
-		switch measurement.Script.Output {
-		case string(Number):
-			processNumberOutput(w, measurement)
+		if  measurement.Output != nil  {
+			switch (*measurement.Output).(type) {
+				case float64:
+					fmt.Fprintf(w, "script_output{script=\"%s\"} %f\n", measurement.Script.Name, (*measurement.Output).(float64))
+			}
 		}
 	}
 }

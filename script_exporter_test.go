@@ -1,6 +1,7 @@
 package main
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -9,7 +10,7 @@ type ExpectedMeasurement struct {
 	success     int
 	status      int
 	minDuration float64
-	output      string
+	output      *any
 }
 
 type ExpectedMeasurements map[string]ExpectedMeasurement
@@ -28,11 +29,13 @@ var config = &Config{
 func TestRunScripts(t *testing.T) {
 	measurements := runScripts(config.Scripts)
 
+	twentyThree := any(23.0)
+
 	expectedMeasurements := ExpectedMeasurements{
-		"success": {1,  0,   0, ""  },
-		"failure": {0,  1,   0, ""  },
-		"timeout": {0, -1, 0.9, ""  },
-		"number":  {1,  0,   0, "23"},
+		"success": {1,  0,   0, nil},
+		"failure": {0,  1,   0, nil},
+		"timeout": {0, -1, 0.9, nil},
+		"number":  {1,  0,   0, &twentyThree},
 	}
 
 	if len(measurements) != len(config.Scripts) {
@@ -57,6 +60,10 @@ func TestRunScripts(t *testing.T) {
 
 		if measurement.Duration < expectedResult.minDuration {
 			t.Errorf("Expected duration %f < %f: %s", measurement.Duration, expectedResult.minDuration, measurement.Script.Name)
+		}
+
+		if  !deepEqualPointers(measurement.Output, expectedResult.output) {
+			t.Errorf("Expected output %v != %v: %s", *measurement.Output, *expectedResult.output, measurement.Script.Name)
 		}
 	}
 }
@@ -111,4 +118,14 @@ func TestScriptFilter(t *testing.T) {
 			}
 		}
 	})
+}
+
+func deepEqualPointers(a, b *any) bool {
+    if a == nil && b == nil {
+        return true
+    }
+    if a == nil || b == nil {
+        return false
+    }
+    return reflect.DeepEqual(*a, *b)
 }
