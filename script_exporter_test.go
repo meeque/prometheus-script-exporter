@@ -17,10 +17,10 @@ type ExpectedMeasurements map[string]ExpectedMeasurement
 
 var config = &Config{
 	Scripts: []*Script{
-		{"success", "exit 0",  1, ""      },
-		{"failure", "exit 1",  1, ""      },
-		{"timeout", "sleep 5", 2, ""      },
-		{"number",  "echo 23", 1, "number"},
+		{"success", "exit 0",  15, ""      },
+		{"failure", "exit 1",  15, ""      },
+		{"timeout", "sleep 3",  1, ""      },
+		{"number",  "echo 23", 15, "number"},
 	},
 }
 
@@ -29,10 +29,10 @@ func TestRunScripts(t *testing.T) {
 	measurements := runScripts(config.Scripts)
 
 	expectedMeasurements := ExpectedMeasurements{
-		"success": {1,  0, 0, ""  },
-		"failure": {0,  1, 0, ""  },
-		"timeout": {0, -1, 2, ""  },
-		"number":  {1,  0, 0, "23"},
+		"success": {1,  0,   0, ""  },
+		"failure": {0,  1,   0, ""  },
+		"timeout": {0, -1, 0.9, ""  },
+		"number":  {1,  0,   0, "23"},
 	}
 
 	if len(measurements) != len(config.Scripts) {
@@ -40,9 +40,9 @@ func TestRunScripts(t *testing.T) {
 	}
 
 	for _, measurement := range measurements {
-		expectedResult, isExpected := expectedMeasurements[measurement.Script.Name]
+		expectedResult, ok := expectedMeasurements[measurement.Script.Name]
 
-		if !isExpected {
+		if !ok {
 			t.Errorf("Got a measurement for an unexpected script: %s", measurement.Script.Name)
 			continue
 		}

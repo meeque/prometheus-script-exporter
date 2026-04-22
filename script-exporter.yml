@@ -1,12 +1,12 @@
 scripts:
   - name: 'success'
-    script: sleep 5
+    script: exit 0
 
   - name: 'failure'
-    script: sleep 2 && exit 1
+    script: exit 1
 
   - name: 'timeout'
-    script: sleep 5
+    script: sleep 3
     timeout: 1
 
   - name: 'number'
