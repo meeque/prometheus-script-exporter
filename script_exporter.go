@@ -67,11 +67,11 @@ func processOutput(script *Script, output *bytes.Buffer) (result *any, err error
 	}
 	var res any
 	switch script.Output {
-		case string(Number):
-			res, err = processNumberOutput(output)
-			return &res, err
-		default:
-			return nil, errors.New("unsupported output type")
+	case string(Number):
+		res, err = processNumberOutput(output)
+		return &res, err
+	default:
+		return nil, errors.New("unsupported output type")
 	}
 }
 
@@ -186,10 +186,10 @@ func scriptRunHandler(w http.ResponseWriter, r *http.Request, config *Config) {
 		fmt.Fprintf(w, "script_status{script=\"%s\"} %d\n", measurement.Script.Name, measurement.Status)
 		fmt.Fprintf(w, "script_success{script=\"%s\"} %d\n", measurement.Script.Name, measurement.Success)
 
-		if  measurement.Output != nil  {
+		if measurement.Output != nil {
 			switch (*measurement.Output).(type) {
-				case float64:
-					fmt.Fprintf(w, "script_output{script=\"%s\"} %f\n", measurement.Script.Name, (*measurement.Output).(float64))
+			case float64:
+				fmt.Fprintf(w, "script_output{script=\"%s\"} %f\n", measurement.Script.Name, (*measurement.Output).(float64))
 			}
 		}
 	}
