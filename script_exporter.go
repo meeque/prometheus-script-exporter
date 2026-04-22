@@ -1,17 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"time"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -35,6 +37,7 @@ type Script struct {
 	Name    string `yaml:"name"`
 	Content string `yaml:"script"`
 	Timeout int64  `yaml:"timeout"`
+	Output  string `yaml:"output,omitempty"`
 }
 
 type Measurement struct {
@@ -42,31 +45,43 @@ type Measurement struct {
 	Success  int
 	Status   int
 	Duration float64
+	Output   string
 }
 
-func runScript(script *Script) error {
+type OutputType string
+
+const (
+	Number OutputType = "number"
+)
+
+func runScript(script *Script) (*bytes.Buffer, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(script.Timeout)*time.Second)
 	defer cancel()
 
 	bashCmd := exec.CommandContext(ctx, *shell)
 
 	bashIn, err := bashCmd.StdinPipe()
-
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	var bashOut bytes.Buffer;
+
+	if script.Output != "" {
+		bashCmd.Stdout = &bashOut
 	}
 
 	if err = bashCmd.Start(); err != nil {
-		return err
+		return nil, err
 	}
 
 	if _, err = bashIn.Write([]byte(script.Content)); err != nil {
-		return err
+		return &bashOut, err
 	}
 
 	bashIn.Close()
 
-	return bashCmd.Wait()
+	return &bashOut, bashCmd.Wait()
 }
 
 func runScripts(scripts []*Script) []*Measurement {
@@ -79,7 +94,8 @@ func runScripts(scripts []*Script) []*Measurement {
 			start := time.Now()
 			success := 0
 			status := -1
-			err := runScript(script)
+			output := ""
+			outBuffer, err := runScript(script)
 			duration := time.Since(start).Seconds()
 
 			if err == nil {
@@ -94,11 +110,16 @@ func runScripts(scripts []*Script) []*Measurement {
 				}
 			}
 
+			if outBuffer != nil {
+				output = outBuffer.String()
+			}
+
 			ch <- &Measurement{
 				Script:   script,
 				Duration: duration,
 				Success:  success,
 				Status:   status,
+				Output:   output,
 			}
 		}(script)
 	}
@@ -135,6 +156,15 @@ func scriptFilter(scripts []*Script, name, pattern string) (filteredScripts []*S
 	return
 }
 
+func processNumberOutput(w http.ResponseWriter, measurement *Measurement) {
+	output, err := strconv.ParseFloat(measurement.Output, 64)
+	if err != nil {
+		log.Errorf("Error parsing number from script output: %s", err)
+		return
+	}
+	fmt.Fprintf(w, "script_output{script=\"%s\"} %f\n", measurement.Script.Name, output)
+}
+
 func scriptRunHandler(w http.ResponseWriter, r *http.Request, config *Config) {
 	params := r.URL.Query()
 	name := params.Get("name")
@@ -153,6 +183,11 @@ func scriptRunHandler(w http.ResponseWriter, r *http.Request, config *Config) {
 		fmt.Fprintf(w, "script_duration_seconds{script=\"%s\"} %f\n", measurement.Script.Name, measurement.Duration)
 		fmt.Fprintf(w, "script_status{script=\"%s\"} %d\n", measurement.Script.Name, measurement.Status)
 		fmt.Fprintf(w, "script_success{script=\"%s\"} %d\n", measurement.Script.Name, measurement.Success)
+
+		switch measurement.Script.Output {
+		case string(Number):
+			processNumberOutput(w, measurement)
+		}
 	}
 }
 
@@ -170,7 +205,7 @@ func main() {
 
 	log.Infoln("Starting script_exporter", version.Info())
 
-	yamlFile, err := ioutil.ReadFile(*configFile)
+	yamlFile, err := os.ReadFile(*configFile)
 
 	if err != nil {
 		log.Fatalf("Error reading config file: %s", err)

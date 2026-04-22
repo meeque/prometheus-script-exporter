@@ -9,6 +9,7 @@ type ExpectedMeasurement struct {
 	success     int
 	status      int
 	minDuration float64
+	output      string
 }
 
 type ExpectedMeasurements map[string]ExpectedMeasurement
@@ -16,9 +17,10 @@ type ExpectedMeasurements map[string]ExpectedMeasurement
 
 var config = &Config{
 	Scripts: []*Script{
-		{"success", "exit 0", 1},
-		{"failure", "exit 1", 1},
-		{"timeout", "sleep 5", 2},
+		{"success", "exit 0",  1, ""      },
+		{"failure", "exit 1",  1, ""      },
+		{"timeout", "sleep 5", 2, ""      },
+		{"number",  "echo 23", 1, "number"},
 	},
 }
 
@@ -27,9 +29,10 @@ func TestRunScripts(t *testing.T) {
 	measurements := runScripts(config.Scripts)
 
 	expectedMeasurements := ExpectedMeasurements{
-		"success": {1, 0, 0},
-		"failure": {0, 1, 0},
-		"timeout": {0, -1, 2},
+		"success": {1,  0, 0, ""  },
+		"failure": {0,  1, 0, ""  },
+		"timeout": {0, -1, 2, ""  },
+		"number":  {1,  0, 0, "23"},
 	}
 
 	if len(measurements) != len(config.Scripts) {
@@ -98,8 +101,8 @@ func TestScriptFilter(t *testing.T) {
 			t.Errorf("Unexpected: %s", err.Error())
 		}
 
-		if len(scripts) != 3 {
-			t.Fatalf("Expected 3 scripts, received %d", len(scripts))
+		if len(scripts) != len(config.Scripts) {
+			t.Fatalf("Expected %d scripts, received %d", len(config.Scripts), len(scripts))
 		}
 
 		for i, script := range config.Scripts {

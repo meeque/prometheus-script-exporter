@@ -8,3 +8,7 @@ scripts:
   - name: 'timeout'
     script: sleep 5
     timeout: 1
+
+  - name: 'number'
+    script: echo -n 23
+    output: number
