@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -36,10 +37,10 @@ type Config struct {
 }
 
 type Script struct {
-	Name    string `yaml:"name"`
-	Content string `yaml:"script"`
-	Timeout int64  `yaml:"timeout"`
-	Output  string `yaml:"output,omitempty"`
+	Name    string     `yaml:"name"`
+	Content string     `yaml:"script"`
+	Timeout int64      `yaml:"timeout"`
+	Output  OutputType `yaml:"output,omitempty"`
 }
 
 type Measurement struct {
@@ -57,32 +58,41 @@ const (
 	Json   OutputType = "json"
 )
 
-func processNumberOutput(output *bytes.Buffer) (result float64, err error) {
+type OutputHandler interface {
+	Process(output *bytes.Buffer) (result any, err error)
+	Print(writer io.Writer, scriptName string, result any)
+}
+
+type NumberOutputHandler struct {
+}
+
+func (h *NumberOutputHandler) Process(output *bytes.Buffer) (any, error) {
 	trimmedOutput := strings.TrimSpace(output.String())
-	result, err = strconv.ParseFloat(trimmedOutput, 64)
-	return
+	return strconv.ParseFloat(trimmedOutput, 64)
 }
 
-func processJsonOutput(output *bytes.Buffer) (result any, err error) {
-	err = json.Unmarshal([]byte(output.Bytes()), &result)
-	return
+func (h *NumberOutputHandler) Print(writer io.Writer, scriptName string, result any) {
+	fmt.Fprintf(writer, "script_output{script=\"%s\"} %f\n", scriptName, result.(float64))
 }
 
-func processOutput(script *Script, output *bytes.Buffer) (result *any, err error) {
-	if output == nil {
-		return
+type JsonOutputHandler struct {
+}
+
+func (h *JsonOutputHandler) Process(output *bytes.Buffer) (any, error) {
+	var result any
+	err := json.Unmarshal(output.Bytes(), &result)
+	return result, err
+}
+
+func (h *JsonOutputHandler) Print(writer io.Writer, scriptName string, result any) {
+	for name, value := range result.(map[string]any) {
+		fmt.Fprintf(writer, "script_output{script=\"%s\",output=\"%s\"} %f\n", scriptName, name, value)
 	}
-	var res any
-	switch script.Output {
-	case string(Number):
-		res, err = processNumberOutput(output)
-		return &res, err
-	case string(Json):
-		res, err = processJsonOutput(output)
-		return &res, err
-	default:
-		return nil, errors.New("unsupported output type")
-	}
+}
+
+var outputHandlers = map[OutputType]OutputHandler{
+	"number": &NumberOutputHandler{},
+	"json":   &JsonOutputHandler{},
 }
 
 func runScript(script *Script) (stdout *bytes.Buffer, err error) {
@@ -93,7 +103,7 @@ func runScript(script *Script) (stdout *bytes.Buffer, err error) {
 
 	cmd.Stdin = strings.NewReader(script.Content)
 
-	if script.Output != "" {
+	if _, ok := outputHandlers[script.Output]; ok {
 		stdout = &bytes.Buffer{}
 		cmd.Stdout = stdout
 	}
@@ -130,9 +140,16 @@ func runScripts(scripts []*Script) []*Measurement {
 				}
 			}
 
-			processedOutput, err := processOutput(script, outBuffer)
-			if err != nil {
-				log.Infof("ERROR: %s: failed processing script output as %s: %s", script.Name, script.Output, err)
+			var output *any
+			handler, ok := outputHandlers[script.Output]
+			if ok {
+				processedOutput, err := handler.Process(outBuffer)
+				if err != nil {
+					log.Infof("ERROR: %s: failed processing script output as %s: %s", script.Name, script.Output, err)
+				} else {
+					output = &processedOutput
+				}
+
 			}
 
 			ch <- &Measurement{
@@ -140,7 +157,7 @@ func runScripts(scripts []*Script) []*Measurement {
 				Duration: duration,
 				Success:  success,
 				Status:   status,
-				Output:   processedOutput,
+				Output:   output,
 			}
 		}(script)
 	}
@@ -196,15 +213,9 @@ func scriptRunHandler(w http.ResponseWriter, r *http.Request, config *Config) {
 		fmt.Fprintf(w, "script_status{script=\"%s\"} %d\n", measurement.Script.Name, measurement.Status)
 		fmt.Fprintf(w, "script_success{script=\"%s\"} %d\n", measurement.Script.Name, measurement.Success)
 
-		if measurement.Output != nil {
-			switch (*measurement.Output).(type) {
-			case float64:
-				fmt.Fprintf(w, "script_output{script=\"%s\"} %f\n", measurement.Script.Name, (*measurement.Output).(float64))
-			case map[string]any:
-				for name, value := range (*measurement.Output).(map[string]any) {
-					fmt.Fprintf(w, "script_output{script=\"%s\", name=\"%s\"} %f\n", measurement.Script.Name, name, value)
-				}
-			}
+		handler, ok := outputHandlers[measurement.Script.Output]
+		if ok {
+			handler.Print(w, measurement.Script.Name, *measurement.Output)
 		}
 	}
 }
