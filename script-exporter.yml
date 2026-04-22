@@ -10,5 +10,10 @@ scripts:
     timeout: 1
 
   - name: 'number'
-    script: echo -n 23
+    script: echo 23
     output: number
+
+  - name: 'json'
+    script: |
+      echo '{"foo": 42, "bar": 2.71828}'
+    output: json

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -20,6 +21,7 @@ var config = &Config{
 		{"failure", "exit 1", 15, ""},
 		{"timeout", "sleep 3", 1, ""},
 		{"number", "echo 23", 15, "number"},
+		{"json", "echo '{\"foo\": 42, \"bar\": 2.71828}'", 15, "json"},
 	},
 }
 
@@ -28,11 +30,18 @@ func TestRunScripts(t *testing.T) {
 
 	twentyThree := any(23.0)
 
+	fooBarMap := any(
+		map[string]any{
+			"foo": 42.0,
+			"bar": 2.71828,
+		})
+
 	expectedMeasurements := ExpectedMeasurements{
 		"success": {1, 0, 0, nil},
 		"failure": {0, 1, 0, nil},
 		"timeout": {0, -1, 0.9, nil},
 		"number":  {1, 0, 0, &twentyThree},
+		"json":    {1, 0, 0, &fooBarMap},
 	}
 
 	if len(measurements) != len(config.Scripts) {
@@ -60,7 +69,7 @@ func TestRunScripts(t *testing.T) {
 		}
 
 		if !deepEqualPointers(measurement.Output, expectedResult.output) {
-			t.Errorf("Expected output %v != %v: %s", *measurement.Output, *expectedResult.output, measurement.Script.Name)
+			t.Errorf("Expected output %s != %s: %s", stringPointer(measurement.Output), stringPointer(expectedResult.output), measurement.Script.Name)
 		}
 	}
 }
@@ -125,4 +134,11 @@ func deepEqualPointers(a, b *any) bool {
 		return false
 	}
 	return reflect.DeepEqual(*a, *b)
+}
+
+func stringPointer(p *any) string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("%v", *p)
 }

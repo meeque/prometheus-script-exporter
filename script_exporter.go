@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -53,11 +54,17 @@ type OutputType string
 
 const (
 	Number OutputType = "number"
+	Json   OutputType = "json"
 )
 
 func processNumberOutput(output *bytes.Buffer) (result float64, err error) {
 	trimmedOutput := strings.TrimSpace(output.String())
 	result, err = strconv.ParseFloat(trimmedOutput, 64)
+	return
+}
+
+func processJsonOutput(output *bytes.Buffer) (result any, err error) {
+	err = json.Unmarshal([]byte(output.Bytes()), &result)
 	return
 }
 
@@ -69,6 +76,9 @@ func processOutput(script *Script, output *bytes.Buffer) (result *any, err error
 	switch script.Output {
 	case string(Number):
 		res, err = processNumberOutput(output)
+		return &res, err
+	case string(Json):
+		res, err = processJsonOutput(output)
 		return &res, err
 	default:
 		return nil, errors.New("unsupported output type")
@@ -190,6 +200,10 @@ func scriptRunHandler(w http.ResponseWriter, r *http.Request, config *Config) {
 			switch (*measurement.Output).(type) {
 			case float64:
 				fmt.Fprintf(w, "script_output{script=\"%s\"} %f\n", measurement.Script.Name, (*measurement.Output).(float64))
+			case map[string]any:
+				for name, value := range (*measurement.Output).(map[string]any) {
+					fmt.Fprintf(w, "script_output{script=\"%s\", name=\"%s\"} %f\n", measurement.Script.Name, name, value)
+				}
 			}
 		}
 	}
