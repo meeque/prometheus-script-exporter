@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -54,34 +55,24 @@ const (
 	Number OutputType = "number"
 )
 
-func runScript(script *Script) (*bytes.Buffer, error) {
+func runScript(script *Script) (stdout *bytes.Buffer, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(script.Timeout)*time.Second)
 	defer cancel()
 
-	bashCmd := exec.CommandContext(ctx, *shell)
+	cmd := exec.CommandContext(ctx, *shell)
 
-	bashIn, err := bashCmd.StdinPipe()
-	if err != nil {
-		return nil, err
-	}
-
-	var bashOut bytes.Buffer;
+	cmd.Stdin = strings.NewReader(script.Content)
 
 	if script.Output != "" {
-		bashCmd.Stdout = &bashOut
+		stdout = &bytes.Buffer{}
+		cmd.Stdout = stdout
 	}
 
-	if err = bashCmd.Start(); err != nil {
-		return nil, err
+	if err = cmd.Start(); err != nil {
+		return
 	}
-
-	if _, err = bashIn.Write([]byte(script.Content)); err != nil {
-		return &bashOut, err
-	}
-
-	bashIn.Close()
-
-	return &bashOut, bashCmd.Wait()
+	err = cmd.Wait()
+	return
 }
 
 func runScripts(scripts []*Script) []*Measurement {
