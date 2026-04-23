@@ -14,8 +14,6 @@ type ExpectedMeasurement struct {
 	Output      *any
 }
 
-type ExpectedMeasurements map[string]ExpectedMeasurement
-
 var config = &Config{
 	Scripts: []*Script{
 		{"success", "exit 0", 15, ""},
@@ -37,7 +35,7 @@ func TestRunScripts(t *testing.T) {
 			"bar": 2.71828,
 		})
 
-	expectedMeasurements := ExpectedMeasurements{
+	expectedMeasurements := &map[string]*ExpectedMeasurement{
 		"success": {1, 0, 0, nil},
 		"failure": {0, 1, 0, nil},
 		"timeout": {0, -1, 0.9, nil},
@@ -50,28 +48,35 @@ func TestRunScripts(t *testing.T) {
 	}
 
 	for _, measurement := range measurements {
-		expectedResult, ok := expectedMeasurements[measurement.Script.Name]
 
-		if !ok {
-			t.Errorf("Got a measurement for an unexpected script: %s", measurement.Script.Name)
-			continue
-		}
+		t.Run(
+			measurement.Script.Name,
+			func(t *testing.T) {
+				expectedResult, ok := (*expectedMeasurements)[measurement.Script.Name]
 
-		if measurement.Success != expectedResult.Success {
-			t.Errorf("Expected success %d != %d: %s", measurement.Success, expectedResult.Success, measurement.Script.Name)
-		}
+				if !ok {
+					t.Errorf("Got a measurement for an unexpected script: %s", measurement.Script.Name)
+					return
+				}
 
-		if measurement.Status != expectedResult.Status {
-			t.Errorf("Expected status %d != %d: %s", measurement.Status, expectedResult.Status, measurement.Script.Name)
-		}
+				if measurement.Success != expectedResult.Success {
+					t.Errorf("Expected success %d != %d: %s", measurement.Success, expectedResult.Success, measurement.Script.Name)
+				}
 
-		if measurement.Duration < expectedResult.MinDuration {
-			t.Errorf("Expected duration %f < %f: %s", measurement.Duration, expectedResult.MinDuration, measurement.Script.Name)
-		}
+				if measurement.Status != expectedResult.Status {
+					t.Errorf("Expected status %d != %d: %s", measurement.Status, expectedResult.Status, measurement.Script.Name)
+				}
 
-		if !deepEqualPointers(measurement.Output, expectedResult.Output) {
-			t.Errorf("Expected output %s != %s: %s", stringPointer(measurement.Output), stringPointer(expectedResult.Output), measurement.Script.Name)
-		}
+				if measurement.Duration < expectedResult.MinDuration {
+					t.Errorf("Expected duration %f < %f: %s", measurement.Duration, expectedResult.MinDuration, measurement.Script.Name)
+				}
+
+				if !deepEqualPointers(measurement.Output, expectedResult.Output) {
+					t.Errorf("Expected output %s != %s: %s", stringPointer(measurement.Output), stringPointer(expectedResult.Output), measurement.Script.Name)
+				}
+			},
+		)
+
 	}
 }
 
