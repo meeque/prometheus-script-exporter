@@ -26,25 +26,25 @@ type OutputHandler interface {
 type NumberOutputHandler struct {
 }
 
-func (h *NumberOutputHandler) Process(output *bytes.Buffer) (any, error) {
+func (NumberOutputHandler) Process(output *bytes.Buffer) (any, error) {
 	trimmedOutput := strings.TrimSpace(output.String())
 	return strconv.ParseFloat(trimmedOutput, 64)
 }
 
-func (h *NumberOutputHandler) Print(writer io.Writer, scriptName string, result any) {
+func (NumberOutputHandler) Print(writer io.Writer, scriptName string, result any) {
 	fmt.Fprintf(writer, "script_output{script=\"%s\"} %f\n", scriptName, result.(float64))
 }
 
 type JsonOutputHandler struct {
 }
 
-func (h *JsonOutputHandler) Process(output *bytes.Buffer) (any, error) {
+func (JsonOutputHandler) Process(output *bytes.Buffer) (any, error) {
 	var result any
 	err := json.Unmarshal(output.Bytes(), &result)
 	return result, err
 }
 
-func (h *JsonOutputHandler) Print(writer io.Writer, scriptName string, result any) {
+func (JsonOutputHandler) Print(writer io.Writer, scriptName string, result any) {
 	outputs := map[string]string{}
 	flattenJson(".", result, &outputs)
 	for name, value := range outputs {
