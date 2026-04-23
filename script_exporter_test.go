@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"testing"
 )
@@ -145,6 +146,13 @@ func deepEqualPointers(a, b *any) bool {
 	if a == nil || b == nil {
 		return false
 	}
+
+	aAsFloat, aIsFloat := (*a).(float64)
+	bAsFloat, bIsFloat := (*b).(float64)
+	if aIsFloat && bIsFloat && math.IsNaN(aAsFloat) && math.IsNaN(bAsFloat) {
+		return true
+	}
+
 	return reflect.DeepEqual(*a, *b)
 }
 
