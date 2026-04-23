@@ -44,39 +44,43 @@ func (JsonOutputHandler) Process(output *bytes.Buffer) (processedOutput any, err
 }
 
 func (JsonOutputHandler) Sample(metricName string, processedOutput any) (samples []string) {
-	outputs := map[string]string{}
-	flattenJson(".", processedOutput, &outputs)
-	for name, value := range outputs {
+	flatProcessedOutput := &FlatJsonOutput{}
+	flatProcessedOutput.append(".", processedOutput)
+	for name, value := range *flatProcessedOutput {
 		samples = append(samples, fmt.Sprintf("script_output{script=\"%s\",output=\"%s\"} %s", metricName, name, value))
 	}
 	return
 }
 
-func flattenJson(path string, value any, outputs *map[string]string) {
+type FlatJsonOutput map[string]string
+
+func (o *FlatJsonOutput) append(path string, value any) {
 	switch value := value.(type) {
+	// most cases involve recursion!
 	case map[string]any:
 		for k, v := range value {
-			flattenJson(appendToPath(path, k), v, outputs)
+			o.append(appendToPath(path, k), v)
 		}
 	case []any:
 		for i, v := range value {
-			flattenJson(appendToPath(path, fmt.Sprintf("%d", i)), v, outputs)
+			o.append(appendToPath(path, fmt.Sprintf("%d", i)), v)
 		}
-	case float64:
-		(*outputs)[path] = fmt.Sprintf("%f", value)
 	case bool:
 		numericValue := 0.0
 		if value {
 			numericValue = 1
 		}
-		flattenJson(path, numericValue, outputs)
+		o.append(path, numericValue)
 	case string:
 		trimmedValue := strings.TrimSpace(value)
 		if numericValue, err := strconv.ParseFloat(trimmedValue, 64); err == nil {
-			flattenJson(path, numericValue, outputs)
+			o.append(path, numericValue)
 		} else {
-			flattenJson(path, nil, outputs)
+			o.append(path, nil)
 		}
+	// recursion only terminates below here
+	case float64:
+		(*o)[path] = fmt.Sprintf("%f", value)
 	default:
 		log.Debugf("WARN: Silently ignoring non-numeric JSON value at path '%s'", path)
 	}
