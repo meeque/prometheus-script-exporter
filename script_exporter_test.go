@@ -38,11 +38,11 @@ func TestRunScripts(t *testing.T) {
 		})
 
 	expectedMeasurements := ExpectedMeasurements{
-		"success":      {1, 0, 0, nil},
-		"failure":      {0, 1, 0, nil},
-		"timeout":      {0, -1, 0.9, nil},
-		"number":       {1, 0, 0, &twentyThree},
-		"json":         {1, 0, 0, &fooBarMap},
+		"success": {1, 0, 0, nil},
+		"failure": {0, 1, 0, nil},
+		"timeout": {0, -1, 0.9, nil},
+		"number":  {1, 0, 0, &twentyThree},
+		"json":    {1, 0, 0, &fooBarMap},
 	}
 
 	if len(measurements) != len(config.Scripts) {

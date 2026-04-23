@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"math"
 	"slices"
 	"strings"
@@ -141,7 +140,7 @@ func TestNumberOutputHandler(t *testing.T) {
 		},
 	}
 
-	testHandlers(t, handler, testConfigs)
+	testHandler(t, handler, testConfigs)
 }
 
 func TestJsonOutputHandler(t *testing.T) {
@@ -208,7 +207,7 @@ func TestJsonOutputHandler(t *testing.T) {
 			ExpectedProcessedOutput: any([]any{8000.0, nil, "42", 0.0, "ahoj!", true, -3.14}),
 			ExpectedPrintedResult: "script_output{script=\"mixed_array\",output=\"0\"} 8000.000000\n" +
 				"script_output{script=\"mixed_array\",output=\"2\"} 42.000000\n" +
-				"script_output{script=\"mixed_array\",output=\"3\"} -0.000000\n" +
+				"script_output{script=\"mixed_array\",output=\"3\"} 0.000000\n" +
 				"script_output{script=\"mixed_array\",output=\"5\"} 1.000000\n" +
 				"script_output{script=\"mixed_array\",output=\"6\"} -3.140000\n",
 		},
@@ -282,21 +281,42 @@ func TestJsonOutputHandler(t *testing.T) {
 		},
 	}
 
-	testHandlers(t, handler, testConfigs)
+	testHandler(t, handler, testConfigs)
 }
 
-func testHandlers(t *testing.T, handler OutputHandler, testConfigs []OutputHandlerTestConfig) {
-	for _, testConfig := range testConfigs {
-		t.Run(
-			fmt.Sprintf("with_%s", testConfig.Name),
-			func(t *testing.T) {
-				testHandler(t, handler, &testConfig)
-			},
-		)
-	}
+func testHandler(t *testing.T, handler OutputHandler, testConfigs []OutputHandlerTestConfig) {
+
+	t.Run(
+		"Process",
+		func(t *testing.T) {
+			for _, testConfig := range testConfigs {
+				t.Run(
+					"with_"+testConfig.Name,
+					func(t *testing.T) {
+						testProcess(t, handler, &testConfig)
+					},
+				)
+			}
+		},
+	)
+
+	t.Run(
+		"Print",
+		func(t *testing.T) {
+			for _, testConfig := range testConfigs {
+				t.Run(
+					"with_"+testConfig.Name,
+					func(t *testing.T) {
+						testPrint(t, handler, &testConfig)
+					},
+				)
+			}
+		},
+	)
+
 }
 
-func testHandler(t *testing.T, handler OutputHandler, testConfig *OutputHandlerTestConfig) {
+func testProcess(t *testing.T, handler OutputHandler, testConfig *OutputHandlerTestConfig) {
 	processedOutput, err := handler.Process(bytes.NewBufferString(testConfig.TestOutput))
 
 	if err != nil {
@@ -314,9 +334,15 @@ func testHandler(t *testing.T, handler OutputHandler, testConfig *OutputHandlerT
 	if !deepEqualPointers(&processedOutput, &testConfig.ExpectedProcessedOutput) {
 		t.Errorf("Expected output %s != %s", processedOutput, testConfig.ExpectedProcessedOutput)
 	}
+}
+
+func testPrint(t *testing.T, handler OutputHandler, testConfig *OutputHandlerTestConfig) {
+	if testConfig.ExpectedProcessedOutput == nil {
+		return
+	}
 
 	printWriter := &bytes.Buffer{}
-	handler.Print(printWriter, testConfig.Name, processedOutput)
+	handler.Print(printWriter, testConfig.Name, testConfig.ExpectedProcessedOutput)
 	printedResult := printWriter.String()
 
 	if !equalLinesInArbitraryOrder(printedResult, testConfig.ExpectedPrintedResult) {
