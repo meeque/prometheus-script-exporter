@@ -48,7 +48,6 @@ type Measurement struct {
 	Output   *any
 }
 
-
 func runScript(script *Script) (stdout *bytes.Buffer, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(script.Timeout)*time.Second)
 	defer cancel()

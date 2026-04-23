@@ -42,19 +42,19 @@ func TestRunScripts(t *testing.T) {
 
 	textNumberMap := any(
 		map[string]any{
-			"text": "foo",
+			"text":   "foo",
 			"number": 7.0,
 		})
 
 	expectedMeasurements := ExpectedMeasurements{
-		"success": {1, 0, 0, nil},
-		"failure": {0, 1, 0, nil},
-		"timeout": {0, -1, 0.9, nil},
-		"number":  {1, 0, 0, &twentyThree},
-		"invalid-num": {1, 0, 0, nil},
-		"json":    {1, 0, 0, &fooBarMap},
+		"success":      {1, 0, 0, nil},
+		"failure":      {0, 1, 0, nil},
+		"timeout":      {0, -1, 0.9, nil},
+		"number":       {1, 0, 0, &twentyThree},
+		"invalid-num":  {1, 0, 0, nil},
+		"json":         {1, 0, 0, &fooBarMap},
 		"invalid-json": {1, 0, 0, nil},
-		"mixed-json": {1, 0, 0, &textNumberMap},
+		"mixed-json":   {1, 0, 0, &textNumberMap},
 	}
 
 	if len(measurements) != len(config.Scripts) {

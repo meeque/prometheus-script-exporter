@@ -10,7 +10,7 @@ import (
 )
 
 type OutputHandlerTestConfig struct {
-	Name 				    string
+	Name                    string
 	TestOutput              string
 	ExpectedProcessedOutput any
 	ExpectedPrintedResult   string
@@ -22,8 +22,8 @@ func TestNumberOutputHandler(t *testing.T) {
 	testConfigs := []OutputHandlerTestConfig{
 
 		{
-			Name:                   "text",
-			TestOutput:             "leet",
+			Name:                    "text",
+			TestOutput:              "leet",
 			ExpectedProcessedOutput: nil,
 			ExpectedPrintedResult:   "",
 		},
@@ -139,7 +139,6 @@ func TestNumberOutputHandler(t *testing.T) {
 			ExpectedProcessedOutput: any(math.Inf(-1)),
 			ExpectedPrintedResult:   "script_output{script=\"negative_infinity\"} -Inf\n",
 		},
-
 	}
 
 	testHandlers(t, handler, testConfigs)
@@ -196,92 +195,91 @@ func TestJsonOutputHandler(t *testing.T) {
 			Name:                    "array",
 			TestOutput:              "[1, 2, 4, 8, 16]",
 			ExpectedProcessedOutput: any([]any{1.0, 2.0, 4.0, 8.0, 16.0}),
-			ExpectedPrintedResult:   "script_output{script=\"array\",output=\"0\"} 1.000000\n" +
-									 "script_output{script=\"array\",output=\"1\"} 2.000000\n" +
-									 "script_output{script=\"array\",output=\"2\"} 4.000000\n" +
-									 "script_output{script=\"array\",output=\"3\"} 8.000000\n" +
-									 "script_output{script=\"array\",output=\"4\"} 16.000000\n",
+			ExpectedPrintedResult: "script_output{script=\"array\",output=\"0\"} 1.000000\n" +
+				"script_output{script=\"array\",output=\"1\"} 2.000000\n" +
+				"script_output{script=\"array\",output=\"2\"} 4.000000\n" +
+				"script_output{script=\"array\",output=\"3\"} 8.000000\n" +
+				"script_output{script=\"array\",output=\"4\"} 16.000000\n",
 		},
 
 		{
 			Name:                    "mixed_array",
 			TestOutput:              "[8000, null, \"42\", -0.0, \"ahoj!\", true, -3.14]",
 			ExpectedProcessedOutput: any([]any{8000.0, nil, "42", 0.0, "ahoj!", true, -3.14}),
-			ExpectedPrintedResult:   "script_output{script=\"mixed_array\",output=\"0\"} 8000.000000\n" +
-									 "script_output{script=\"mixed_array\",output=\"2\"} 42.000000\n" +
-									 "script_output{script=\"mixed_array\",output=\"3\"} -0.000000\n" +
-									 "script_output{script=\"mixed_array\",output=\"5\"} 1.000000\n" +
-									 "script_output{script=\"mixed_array\",output=\"6\"} -3.140000\n",
+			ExpectedPrintedResult: "script_output{script=\"mixed_array\",output=\"0\"} 8000.000000\n" +
+				"script_output{script=\"mixed_array\",output=\"2\"} 42.000000\n" +
+				"script_output{script=\"mixed_array\",output=\"3\"} -0.000000\n" +
+				"script_output{script=\"mixed_array\",output=\"5\"} 1.000000\n" +
+				"script_output{script=\"mixed_array\",output=\"6\"} -3.140000\n",
 		},
 
 		{
-			Name:                    "object",
-			TestOutput:              "{" +
-									   "\"foo\": 42," +
-									   "\"bar\": 2.71828" +
-									 "}",
+			Name: "object",
+			TestOutput: "{" +
+				"\"foo\": 42," +
+				"\"bar\": 2.71828" +
+				"}",
 			ExpectedProcessedOutput: any(map[string]any{
-									   "foo": 42.0,
-									   "bar": 2.71828,
-									 }),
-			ExpectedPrintedResult:   "script_output{script=\"object\",output=\"foo\"} 42.000000\n" +
-									 "script_output{script=\"object\",output=\"bar\"} 2.718280\n",
+				"foo": 42.0,
+				"bar": 2.71828,
+			}),
+			ExpectedPrintedResult: "script_output{script=\"object\",output=\"foo\"} 42.000000\n" +
+				"script_output{script=\"object\",output=\"bar\"} 2.718280\n",
 		},
 
 		{
-			Name:                    "mixed_object",
-			TestOutput:              "{" +
-									   "\"text\": \"foo\"," +
-									   "\"number\": 7" +
-									 "}",
+			Name: "mixed_object",
+			TestOutput: "{" +
+				"\"text\": \"foo\"," +
+				"\"number\": 7" +
+				"}",
 			ExpectedProcessedOutput: any(map[string]any{
-			                           "text": "foo",
-									   "number": 7.0,
-									 }),
-			ExpectedPrintedResult:   "script_output{script=\"mixed_object\",output=\"number\"} 7.000000\n",
+				"text":   "foo",
+				"number": 7.0,
+			}),
+			ExpectedPrintedResult: "script_output{script=\"mixed_object\",output=\"number\"} 7.000000\n",
 		},
 
 		{
-			Name:                    "nested_json",
-			TestOutput:              "{" +
-									   "\"text\": \"foo\"," +
-									   "\"number\": 7," +
-									   "\"boolean\": true," +
-									   "\"array\": [true, 2, \"3\"]," +
-									   "\"empty\": []," +
-									   "\"nested\": {" +
-									     "\"null\": null," +
-										 "\"boolean\": false," +
-										 "\"pi\": \"3.14\"," +
-										 "\"empty\": []" +
-									   "}" +
-									 "}",
+			Name: "nested_json",
+			TestOutput: "{" +
+				"\"text\": \"foo\"," +
+				"\"number\": 7," +
+				"\"boolean\": true," +
+				"\"array\": [true, 2, \"3\"]," +
+				"\"empty\": []," +
+				"\"nested\": {" +
+				"\"null\": null," +
+				"\"boolean\": false," +
+				"\"pi\": \"3.14\"," +
+				"\"empty\": []" +
+				"}" +
+				"}",
 			ExpectedProcessedOutput: any(map[string]any{
-									   "text": "foo",
-									   "number": 7.0,
-									   "boolean": true,
-									   "array": []any{
-										  true,
-										  2.0,
-										  "3",
-									   },
-									   "empty": []any{},
-									   "nested": any(map[string]any{
-										  "null": nil,
-										  "boolean": false,
-										  "pi": "3.14",
-										  "empty": []any{},
-									   }),
-									 }),
-			ExpectedPrintedResult:   "script_output{script=\"nested_json\",output=\"number\"} 7.000000\n" +
-									 "script_output{script=\"nested_json\",output=\"boolean\"} 1.000000\n" +
-									 "script_output{script=\"nested_json\",output=\"array.0\"} 1.000000\n" +
-									 "script_output{script=\"nested_json\",output=\"array.1\"} 2.000000\n" +
-									 "script_output{script=\"nested_json\",output=\"array.2\"} 3.000000\n" +
-									 "script_output{script=\"nested_json\",output=\"nested.boolean\"} 0.000000\n" +
-									 "script_output{script=\"nested_json\",output=\"nested.pi\"} 3.140000\n",
+				"text":    "foo",
+				"number":  7.0,
+				"boolean": true,
+				"array": []any{
+					true,
+					2.0,
+					"3",
+				},
+				"empty": []any{},
+				"nested": any(map[string]any{
+					"null":    nil,
+					"boolean": false,
+					"pi":      "3.14",
+					"empty":   []any{},
+				}),
+			}),
+			ExpectedPrintedResult: "script_output{script=\"nested_json\",output=\"number\"} 7.000000\n" +
+				"script_output{script=\"nested_json\",output=\"boolean\"} 1.000000\n" +
+				"script_output{script=\"nested_json\",output=\"array.0\"} 1.000000\n" +
+				"script_output{script=\"nested_json\",output=\"array.1\"} 2.000000\n" +
+				"script_output{script=\"nested_json\",output=\"array.2\"} 3.000000\n" +
+				"script_output{script=\"nested_json\",output=\"nested.boolean\"} 0.000000\n" +
+				"script_output{script=\"nested_json\",output=\"nested.pi\"} 3.140000\n",
 		},
-
 	}
 
 	testHandlers(t, handler, testConfigs)
