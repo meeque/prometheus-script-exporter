@@ -7,10 +7,10 @@ import (
 )
 
 type ExpectedMeasurement struct {
-	success     int
-	status      int
-	minDuration float64
-	output      *any
+	Success     int
+	Status      int
+	MinDuration float64
+	Output      *any
 }
 
 type ExpectedMeasurements map[string]ExpectedMeasurement
@@ -68,20 +68,20 @@ func TestRunScripts(t *testing.T) {
 			continue
 		}
 
-		if measurement.Success != expectedResult.success {
-			t.Errorf("Expected success %d != %d: %s", measurement.Success, expectedResult.success, measurement.Script.Name)
+		if measurement.Success != expectedResult.Success {
+			t.Errorf("Expected success %d != %d: %s", measurement.Success, expectedResult.Success, measurement.Script.Name)
 		}
 
-		if measurement.Status != expectedResult.status {
-			t.Errorf("Expected status %d != %d: %s", measurement.Status, expectedResult.status, measurement.Script.Name)
+		if measurement.Status != expectedResult.Status {
+			t.Errorf("Expected status %d != %d: %s", measurement.Status, expectedResult.Status, measurement.Script.Name)
 		}
 
-		if measurement.Duration < expectedResult.minDuration {
-			t.Errorf("Expected duration %f < %f: %s", measurement.Duration, expectedResult.minDuration, measurement.Script.Name)
+		if measurement.Duration < expectedResult.MinDuration {
+			t.Errorf("Expected duration %f < %f: %s", measurement.Duration, expectedResult.MinDuration, measurement.Script.Name)
 		}
 
-		if !deepEqualPointers(measurement.Output, expectedResult.output) {
-			t.Errorf("Expected output %s != %s: %s", stringPointer(measurement.Output), stringPointer(expectedResult.output), measurement.Script.Name)
+		if !deepEqualPointers(measurement.Output, expectedResult.Output) {
+			t.Errorf("Expected output %s != %s: %s", stringPointer(measurement.Output), stringPointer(expectedResult.Output), measurement.Script.Name)
 		}
 	}
 }
