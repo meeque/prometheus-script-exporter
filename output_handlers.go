@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 
@@ -20,7 +19,7 @@ const (
 
 type OutputHandler interface {
 	Process(output *bytes.Buffer) (result any, err error)
-	Print(writer io.Writer, scriptName string, result any)
+	Sample(scriptName string, result any) (samples []string)
 }
 
 type NumberOutputHandler struct {
@@ -31,8 +30,9 @@ func (NumberOutputHandler) Process(output *bytes.Buffer) (any, error) {
 	return strconv.ParseFloat(trimmedOutput, 64)
 }
 
-func (NumberOutputHandler) Print(writer io.Writer, scriptName string, result any) {
-	fmt.Fprintf(writer, "script_output{script=\"%s\"} %f\n", scriptName, result.(float64))
+func (NumberOutputHandler) Sample(scriptName string, result any) (samples []string) {
+	sample := fmt.Sprintf("script_output{script=\"%s\"} %f", scriptName, result.(float64))
+	return []string{sample}
 }
 
 type JsonOutputHandler struct {
@@ -44,12 +44,13 @@ func (JsonOutputHandler) Process(output *bytes.Buffer) (any, error) {
 	return result, err
 }
 
-func (JsonOutputHandler) Print(writer io.Writer, scriptName string, result any) {
+func (JsonOutputHandler) Sample(scriptName string, result any) (samples []string) {
 	outputs := map[string]string{}
 	flattenJson(".", result, &outputs)
 	for name, value := range outputs {
-		fmt.Fprintf(writer, "script_output{script=\"%s\",output=\"%s\"} %s\n", scriptName, name, value)
+		samples = append(samples, fmt.Sprintf("script_output{script=\"%s\",output=\"%s\"} %s", scriptName, name, value))
 	}
+	return
 }
 
 func flattenJson(path string, value any, outputs *map[string]string) {

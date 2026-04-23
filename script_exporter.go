@@ -168,7 +168,10 @@ func scriptRunHandler(w http.ResponseWriter, r *http.Request, config *Config) {
 
 		handler, ok := outputHandlers[measurement.Script.Output]
 		if ok {
-			handler.Print(w, measurement.Script.Name, *measurement.Output)
+			samples := handler.Sample(measurement.Script.Name, *measurement.Output)
+			for _, sample := range samples {
+				fmt.Fprintln(w, sample)
+			}
 		}
 	}
 }
