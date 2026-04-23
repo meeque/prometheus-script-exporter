@@ -17,3 +17,8 @@ scripts:
     script: |
       echo '{"foo": 42, "bar": 2.71828}'
     output: json
+
+  - name: 'mixed-json'
+    script: |
+      echo '{"text": "foo", "number": 7, "boolean": true, "array": [true, 2, "3"], "empty": [], "nested": {"null": null, "boolean": false, "pi": "3.14", "empty": []}}'
+    output: json
