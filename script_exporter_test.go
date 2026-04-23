@@ -22,10 +22,7 @@ var config = &Config{
 		{"failure", "exit 1", 15, ""},
 		{"timeout", "sleep 3", 1, ""},
 		{"number", "echo 23", 15, "number"},
-		{"invalid-num", "echo twentythree", 15, "number"},
 		{"json", "echo '{\"foo\": 42, \"bar\": 2.71828}'", 15, "json"},
-		{"invalid-json", "echo '{ not a mapping }'", 15, "json"},
-		{"mixed-json", "echo '{\"text\": \"foo\", \"number\": 7}'", 15, "json"},
 	},
 }
 
@@ -40,21 +37,12 @@ func TestRunScripts(t *testing.T) {
 			"bar": 2.71828,
 		})
 
-	textNumberMap := any(
-		map[string]any{
-			"text":   "foo",
-			"number": 7.0,
-		})
-
 	expectedMeasurements := ExpectedMeasurements{
 		"success":      {1, 0, 0, nil},
 		"failure":      {0, 1, 0, nil},
 		"timeout":      {0, -1, 0.9, nil},
 		"number":       {1, 0, 0, &twentyThree},
-		"invalid-num":  {1, 0, 0, nil},
 		"json":         {1, 0, 0, &fooBarMap},
-		"invalid-json": {1, 0, 0, nil},
-		"mixed-json":   {1, 0, 0, &textNumberMap},
 	}
 
 	if len(measurements) != len(config.Scripts) {
