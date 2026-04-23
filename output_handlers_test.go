@@ -8,10 +8,10 @@ import (
 )
 
 type OutputHandlerTestConfig struct {
-	Name                    string
-	TestOutput              string
-	ExpectedProcessedOutput any
-	ExpectedPrintedResult   []string
+	Name            string
+	Output          string
+	ProcessedOutput any
+	Samples         []string
 }
 
 func TestNumberOutputHandler(t *testing.T) {
@@ -20,146 +20,146 @@ func TestNumberOutputHandler(t *testing.T) {
 	testConfigs := []OutputHandlerTestConfig{
 
 		{
-			Name:                    "text",
-			TestOutput:              "leet",
-			ExpectedProcessedOutput: nil,
-			ExpectedPrintedResult:   nil,
+			Name:            "text",
+			Output:          "leet",
+			ProcessedOutput: nil,
+			Samples:         nil,
 		},
 
 		{
-			Name:                    "two_numbers",
-			TestOutput:              "19  79",
-			ExpectedProcessedOutput: nil,
-			ExpectedPrintedResult:   nil,
+			Name:            "two_numbers",
+			Output:          "19  79",
+			ProcessedOutput: nil,
+			Samples:         nil,
 		},
 
 		{
-			Name:                    "number_with_text",
-			TestOutput:              "10000000 dollars",
-			ExpectedProcessedOutput: nil,
-			ExpectedPrintedResult:   nil,
+			Name:            "number_with_text",
+			Output:          "10000000 dollars",
+			ProcessedOutput: nil,
+			Samples:         nil,
 		},
 
 		{
-			Name:                    "integer",
-			TestOutput:              "1337",
-			ExpectedProcessedOutput: any(1337.0),
-			ExpectedPrintedResult: []string{
+			Name:            "integer",
+			Output:          "1337",
+			ProcessedOutput: any(1337.0),
+			Samples: []string{
 				"script_output{script=\"integer\"} 1337.000000",
 			},
 		},
 
 		{
-			Name:                    "positive_integer",
-			TestOutput:              "+1999",
-			ExpectedProcessedOutput: any(1999.0),
-			ExpectedPrintedResult: []string{
+			Name:            "positive_integer",
+			Output:          "+1999",
+			ProcessedOutput: any(1999.0),
+			Samples: []string{
 				"script_output{script=\"positive_integer\"} 1999.000000",
 			},
 		},
 
 		{
-			Name:                    "negative_integer",
-			TestOutput:              "-1999",
-			ExpectedProcessedOutput: any(-1999.0),
-			ExpectedPrintedResult: []string{
+			Name:            "negative_integer",
+			Output:          "-1999",
+			ProcessedOutput: any(-1999.0),
+			Samples: []string{
 				"script_output{script=\"negative_integer\"} -1999.000000",
 			},
 		},
 
 		{
-			Name:                    "decimal",
-			TestOutput:              "23.42",
-			ExpectedProcessedOutput: any(23.42),
-			ExpectedPrintedResult: []string{
+			Name:            "decimal",
+			Output:          "23.42",
+			ProcessedOutput: any(23.42),
+			Samples: []string{
 				"script_output{script=\"decimal\"} 23.420000",
 			},
 		},
 
 		{
-			Name:                    "positive_decimal",
-			TestOutput:              "+2.71",
-			ExpectedProcessedOutput: any(2.71),
-			ExpectedPrintedResult: []string{
+			Name:            "positive_decimal",
+			Output:          "+2.71",
+			ProcessedOutput: any(2.71),
+			Samples: []string{
 				"script_output{script=\"positive_decimal\"} 2.710000",
 			},
 		},
 
 		{
-			Name:                    "negative_decimal",
-			TestOutput:              "-3.14",
-			ExpectedProcessedOutput: any(-3.14),
-			ExpectedPrintedResult: []string{
+			Name:            "negative_decimal",
+			Output:          "-3.14",
+			ProcessedOutput: any(-3.14),
+			Samples: []string{
 				"script_output{script=\"negative_decimal\"} -3.140000",
 			},
 		},
 
 		{
-			Name:                    "number_with_padding",
-			TestOutput:              "  69  ",
-			ExpectedProcessedOutput: any(69.0),
-			ExpectedPrintedResult: []string{
+			Name:            "number_with_padding",
+			Output:          "  69  ",
+			ProcessedOutput: any(69.0),
+			Samples: []string{
 				"script_output{script=\"number_with_padding\"} 69.000000",
 			},
 		},
 
 		{
-			Name:                    "hex",
-			TestOutput:              "0x0000ff",
-			ExpectedProcessedOutput: nil,
-			ExpectedPrintedResult:   nil,
+			Name:            "hex",
+			Output:          "0x0000ff",
+			ProcessedOutput: nil,
+			Samples:         nil,
 		},
 
 		{
-			Name:                    "decimal_with_leading_zero",
-			TestOutput:              "0755",
-			ExpectedProcessedOutput: any(755.0),
-			ExpectedPrintedResult: []string{
+			Name:            "decimal_with_leading_zero",
+			Output:          "0755",
+			ProcessedOutput: any(755.0),
+			Samples: []string{
 				"script_output{script=\"decimal_with_leading_zero\"} 755.000000",
 			},
 		},
 
 		{
-			Name:                    "not_a_number",
-			TestOutput:              "NaN",
-			ExpectedProcessedOutput: any(math.NaN()),
-			ExpectedPrintedResult: []string{
+			Name:            "not_a_number",
+			Output:          "NaN",
+			ProcessedOutput: any(math.NaN()),
+			Samples: []string{
 				"script_output{script=\"not_a_number\"} NaN",
 			},
 		},
 
 		{
-			Name:                    "inf",
-			TestOutput:              "inf",
-			ExpectedProcessedOutput: any(math.Inf(1)),
-			ExpectedPrintedResult: []string{
+			Name:            "inf",
+			Output:          "inf",
+			ProcessedOutput: any(math.Inf(1)),
+			Samples: []string{
 				"script_output{script=\"inf\"} +Inf",
 			},
 		},
 
 		{
-			Name:                    "infinity",
-			TestOutput:              "InfInIty",
-			ExpectedProcessedOutput: any(math.Inf(1)),
-			ExpectedPrintedResult: []string{
+			Name:            "infinity",
+			Output:          "InfInIty",
+			ProcessedOutput: any(math.Inf(1)),
+			Samples: []string{
 				"script_output{script=\"infinity\"} +Inf",
 			},
 		},
 
 		{
-			Name:                    "positive_infinity",
-			TestOutput:              "+infinity",
-			ExpectedProcessedOutput: any(math.Inf(1)),
-			ExpectedPrintedResult: []string{
+			Name:            "positive_infinity",
+			Output:          "+infinity",
+			ProcessedOutput: any(math.Inf(1)),
+			Samples: []string{
 				"script_output{script=\"positive_infinity\"} +Inf",
 			},
 		},
 
 		{
-			Name:                    "negative_infinity",
-			TestOutput:              "-iNfiNiTy",
-			ExpectedProcessedOutput: any(math.Inf(-1)),
-			ExpectedPrintedResult: []string{
+			Name:            "negative_infinity",
+			Output:          "-iNfiNiTy",
+			ProcessedOutput: any(math.Inf(-1)),
+			Samples: []string{
 				"script_output{script=\"negative_infinity\"} -Inf",
 			},
 		},
@@ -174,60 +174,60 @@ func TestJsonOutputHandler(t *testing.T) {
 	testConfigs := []OutputHandlerTestConfig{
 
 		{
-			Name:                    "invalid_json",
-			TestOutput:              "{ not a mapping }",
-			ExpectedProcessedOutput: nil,
-			ExpectedPrintedResult:   nil,
+			Name:            "invalid_json",
+			Output:          "{ not a mapping }",
+			ProcessedOutput: nil,
+			Samples:         nil,
 		},
 
 		{
-			Name:                    "true",
-			TestOutput:              "true",
-			ExpectedProcessedOutput: any(true),
-			ExpectedPrintedResult: []string{
+			Name:            "true",
+			Output:          "true",
+			ProcessedOutput: any(true),
+			Samples: []string{
 				"script_output{script=\"true\",output=\".\"} 1.000000",
 			},
 		},
 
 		{
-			Name:                    "false",
-			TestOutput:              "false",
-			ExpectedProcessedOutput: any(false),
-			ExpectedPrintedResult: []string{
+			Name:            "false",
+			Output:          "false",
+			ProcessedOutput: any(false),
+			Samples: []string{
 				"script_output{script=\"false\",output=\".\"} 0.000000",
 			},
 		},
 
 		{
-			Name:                    "number",
-			TestOutput:              "1701",
-			ExpectedProcessedOutput: any(1701.0),
-			ExpectedPrintedResult: []string{
+			Name:            "number",
+			Output:          "1701",
+			ProcessedOutput: any(1701.0),
+			Samples: []string{
 				"script_output{script=\"number\",output=\".\"} 1701.000000",
 			},
 		},
 
 		{
-			Name:                    "string",
-			TestOutput:              "\"howdy\"",
-			ExpectedProcessedOutput: any("howdy"),
-			ExpectedPrintedResult:   []string{},
+			Name:            "string",
+			Output:          "\"howdy\"",
+			ProcessedOutput: any("howdy"),
+			Samples:         []string{},
 		},
 
 		{
-			Name:                    "numeric_string",
-			TestOutput:              "\"2001\"",
-			ExpectedProcessedOutput: any("2001"),
-			ExpectedPrintedResult: []string{
+			Name:            "numeric_string",
+			Output:          "\"2001\"",
+			ProcessedOutput: any("2001"),
+			Samples: []string{
 				"script_output{script=\"numeric_string\",output=\".\"} 2001.000000",
 			},
 		},
 
 		{
-			Name:                    "array",
-			TestOutput:              "[1, 2, 4, 8, 16]",
-			ExpectedProcessedOutput: any([]any{1.0, 2.0, 4.0, 8.0, 16.0}),
-			ExpectedPrintedResult: []string{
+			Name:            "array",
+			Output:          "[1, 2, 4, 8, 16]",
+			ProcessedOutput: any([]any{1.0, 2.0, 4.0, 8.0, 16.0}),
+			Samples: []string{
 				"script_output{script=\"array\",output=\"0\"} 1.000000",
 				"script_output{script=\"array\",output=\"1\"} 2.000000",
 				"script_output{script=\"array\",output=\"2\"} 4.000000",
@@ -237,10 +237,10 @@ func TestJsonOutputHandler(t *testing.T) {
 		},
 
 		{
-			Name:                    "mixed_array",
-			TestOutput:              "[8000, null, \"42\", -0.0, \"ahoj!\", true, -3.14]",
-			ExpectedProcessedOutput: any([]any{8000.0, nil, "42", 0.0, "ahoj!", true, -3.14}),
-			ExpectedPrintedResult: []string{
+			Name:            "mixed_array",
+			Output:          "[8000, null, \"42\", -0.0, \"ahoj!\", true, -3.14]",
+			ProcessedOutput: any([]any{8000.0, nil, "42", 0.0, "ahoj!", true, -3.14}),
+			Samples: []string{
 				"script_output{script=\"mixed_array\",output=\"0\"} 8000.000000",
 				"script_output{script=\"mixed_array\",output=\"2\"} 42.000000",
 				"script_output{script=\"mixed_array\",output=\"3\"} 0.000000",
@@ -251,15 +251,15 @@ func TestJsonOutputHandler(t *testing.T) {
 
 		{
 			Name: "object",
-			TestOutput: "{" +
+			Output: "{" +
 				"\"foo\": 42," +
 				"\"bar\": 2.71828" +
 				"}",
-			ExpectedProcessedOutput: any(map[string]any{
+			ProcessedOutput: any(map[string]any{
 				"foo": 42.0,
 				"bar": 2.71828,
 			}),
-			ExpectedPrintedResult: []string{
+			Samples: []string{
 				"script_output{script=\"object\",output=\"foo\"} 42.000000",
 				"script_output{script=\"object\",output=\"bar\"} 2.718280",
 			},
@@ -267,22 +267,22 @@ func TestJsonOutputHandler(t *testing.T) {
 
 		{
 			Name: "mixed_object",
-			TestOutput: "{" +
+			Output: "{" +
 				"\"text\": \"foo\"," +
 				"\"number\": 7" +
 				"}",
-			ExpectedProcessedOutput: any(map[string]any{
+			ProcessedOutput: any(map[string]any{
 				"text":   "foo",
 				"number": 7.0,
 			}),
-			ExpectedPrintedResult: []string{
+			Samples: []string{
 				"script_output{script=\"mixed_object\",output=\"number\"} 7.000000",
 			},
 		},
 
 		{
 			Name: "nested_json",
-			TestOutput: "{" +
+			Output: "{" +
 				"\"text\": \"foo\"," +
 				"\"number\": 7," +
 				"\"boolean\": true," +
@@ -295,7 +295,7 @@ func TestJsonOutputHandler(t *testing.T) {
 				"\"empty\": []" +
 				"}" +
 				"}",
-			ExpectedProcessedOutput: any(map[string]any{
+			ProcessedOutput: any(map[string]any{
 				"text":    "foo",
 				"number":  7.0,
 				"boolean": true,
@@ -312,7 +312,7 @@ func TestJsonOutputHandler(t *testing.T) {
 					"empty":   []any{},
 				}),
 			}),
-			ExpectedPrintedResult: []string{
+			Samples: []string{
 				"script_output{script=\"nested_json\",output=\"number\"} 7.000000",
 				"script_output{script=\"nested_json\",output=\"boolean\"} 1.000000",
 				"script_output{script=\"nested_json\",output=\"array.0\"} 1.000000",
@@ -360,34 +360,34 @@ func testHandler(t *testing.T, handler OutputHandler, testConfigs []OutputHandle
 }
 
 func testProcess(t *testing.T, handler OutputHandler, testConfig *OutputHandlerTestConfig) {
-	processedOutput, err := handler.Process(bytes.NewBufferString(testConfig.TestOutput))
+	processedOutput, err := handler.Process(bytes.NewBufferString(testConfig.Output))
 
 	if err != nil {
-		if testConfig.ExpectedProcessedOutput == nil {
+		if testConfig.ProcessedOutput == nil {
 			return
 		} else {
 			t.Errorf("Unexpected error when processing output: %s", err)
 		}
 	} else {
-		if testConfig.ExpectedProcessedOutput == nil {
+		if testConfig.ProcessedOutput == nil {
 			t.Errorf("Expected an error when processing output, but got none")
 		}
 	}
 
-	if !deepEqualPointers(&processedOutput, &testConfig.ExpectedProcessedOutput) {
-		t.Errorf("Expected output %s != %s", processedOutput, testConfig.ExpectedProcessedOutput)
+	if !deepEqualPointers(&processedOutput, &testConfig.ProcessedOutput) {
+		t.Errorf("Expected output %s != %s", processedOutput, testConfig.ProcessedOutput)
 	}
 }
 
 func testPrint(t *testing.T, handler OutputHandler, testConfig *OutputHandlerTestConfig) {
-	if testConfig.ExpectedProcessedOutput == nil {
+	if testConfig.ProcessedOutput == nil {
 		return
 	}
 
-	samples := handler.Sample(testConfig.Name, testConfig.ExpectedProcessedOutput)
+	samples := handler.Sample(testConfig.Name, testConfig.ProcessedOutput)
 
-	if !equalLinesInArbitraryOrder(samples, testConfig.ExpectedPrintedResult) {
-		t.Errorf("Expected samples '%s' != '%s'", samples, testConfig.ExpectedPrintedResult)
+	if !equalLinesInArbitraryOrder(samples, testConfig.Samples) {
+		t.Errorf("Expected samples '%s' != '%s'", samples, testConfig.Samples)
 	}
 }
 

@@ -18,37 +18,36 @@ const (
 )
 
 type OutputHandler interface {
-	Process(output *bytes.Buffer) (result any, err error)
-	Sample(scriptName string, result any) (samples []string)
+	Process(output *bytes.Buffer) (processedOutput any, err error)
+	Sample(metricName string, processedOutput any) (samples []string)
 }
 
 type NumberOutputHandler struct {
 }
 
-func (NumberOutputHandler) Process(output *bytes.Buffer) (any, error) {
+func (NumberOutputHandler) Process(output *bytes.Buffer) (processedOutput any, err error) {
 	trimmedOutput := strings.TrimSpace(output.String())
 	return strconv.ParseFloat(trimmedOutput, 64)
 }
 
-func (NumberOutputHandler) Sample(scriptName string, result any) (samples []string) {
-	sample := fmt.Sprintf("script_output{script=\"%s\"} %f", scriptName, result.(float64))
+func (NumberOutputHandler) Sample(metricName string, processedOutput any) (samples []string) {
+	sample := fmt.Sprintf("script_output{script=\"%s\"} %f", metricName, processedOutput.(float64))
 	return []string{sample}
 }
 
 type JsonOutputHandler struct {
 }
 
-func (JsonOutputHandler) Process(output *bytes.Buffer) (any, error) {
-	var result any
-	err := json.Unmarshal(output.Bytes(), &result)
-	return result, err
+func (JsonOutputHandler) Process(output *bytes.Buffer) (processedOutput any, err error) {
+	err = json.Unmarshal(output.Bytes(), &processedOutput)
+	return
 }
 
-func (JsonOutputHandler) Sample(scriptName string, result any) (samples []string) {
+func (JsonOutputHandler) Sample(metricName string, processedOutput any) (samples []string) {
 	outputs := map[string]string{}
-	flattenJson(".", result, &outputs)
+	flattenJson(".", processedOutput, &outputs)
 	for name, value := range outputs {
-		samples = append(samples, fmt.Sprintf("script_output{script=\"%s\",output=\"%s\"} %s", scriptName, name, value))
+		samples = append(samples, fmt.Sprintf("script_output{script=\"%s\",output=\"%s\"} %s", metricName, name, value))
 	}
 	return
 }
