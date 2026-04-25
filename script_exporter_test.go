@@ -1,17 +1,41 @@
 package main
 
 import (
-	"math"
-	"reflect"
+	"regexp"
 	"slices"
+	"strconv"
 	"testing"
 )
 
-type ExpectedMeasurement struct {
-	Success     int
-	Status      int
-	MinDuration float64
-	SampleCount int
+type SampleAsserter interface {
+	Assert(t *testing.T, sample string) (isMatch bool)
+}
+
+type MinDurationAsserter struct {
+	SamplePattern   regexp.Regexp
+	DurationPattern regexp.Regexp
+	Min             float64
+}
+
+func (a MinDurationAsserter) Assert(t *testing.T, sample string) (isMatch bool) {
+	isMatch = a.SamplePattern.Match([]byte(sample))
+	if isMatch {
+		durationString := a.DurationPattern.Find([]byte(sample))
+		if durationString == nil {
+			t.Errorf("Could not find duration pattern %s in sample %s", a.DurationPattern.String(), sample)
+			return
+
+		}
+		duration, err := strconv.ParseFloat(string(durationString), 64)
+		if err != nil {
+			t.Errorf("Could not parse sampled duration %s as number: %s", string(durationString), err)
+			return
+		}
+		if duration < a.Min {
+			t.Errorf("Expected sampled duration to be at least %f, but got %f", a.Min, duration)
+		}
+	}
+	return
 }
 
 var config = &Config{
@@ -28,19 +52,19 @@ func TestRunScripts(t *testing.T) {
 	samples := runScripts(config.Scripts)
 
 	expectedSamples := []string{
-		"script_duration_seconds{script=\"success\"} 0.001697",
+		"script_duration_seconds{script=\"success\"} ?.??",
 		"script_status{script=\"success\"} 0",
 		"script_success{script=\"success\"} 1",
 
-		"script_duration_seconds{script=\"failure\"} 0.001439",
+		"script_duration_seconds{script=\"failure\"} ?.??",
 		"script_status{script=\"failure\"} 1",
 		"script_success{script=\"failure\"} 0",
 
-		"script_duration_seconds{script=\"timeout\"} 1.001120",
+		"script_duration_seconds{script=\"timeout\"} ?.??",
 		"script_status{script=\"timeout\"} -1",
 		"script_success{script=\"timeout\"} 0",
 
-		"script_duration_seconds{script=\"number\"} 0.002202",
+		"script_duration_seconds{script=\"number\"} ?.??",
 		"script_status{script=\"number\"} 0",
 		"script_success{script=\"number\"} 1",
 		"script_output{script=\"number\"} 23.000000",
@@ -52,7 +76,37 @@ func TestRunScripts(t *testing.T) {
 		"script_output{script=\"json\",output=\"bar\"} 2.718280",
 	}
 
-	assertEqualLinesInArbitraryOrder(t, samples, expectedSamples)
+	valueRegexp := regexp.MustCompile(`[^\s]+$`)
+
+	sampleAsserters := []SampleAsserter{
+		MinDurationAsserter{
+			*regexp.MustCompile(`^script_duration_seconds[{].*script="success".*[}]\s+`),
+			*valueRegexp,
+			0.0,
+		},
+		MinDurationAsserter{
+			*regexp.MustCompile(`^script_duration_seconds[{].*script="failure".*[}]\s+`),
+			*valueRegexp,
+			0.0,
+		},
+		MinDurationAsserter{
+			*regexp.MustCompile(`^script_duration_seconds[{].*script="timeout".*[}]\s+`),
+			*valueRegexp,
+			0.9,
+		},
+		MinDurationAsserter{
+			*regexp.MustCompile(`^script_duration_seconds[{].*script="number".*[}]\s+`),
+			*valueRegexp,
+			0.0,
+		},
+		MinDurationAsserter{
+			*regexp.MustCompile(`^script_duration_seconds[{].*script="json".*[}]\s+`),
+			*valueRegexp,
+			0.0,
+		},
+	}
+
+	assertEqualLinesInArbitraryOrder(t, samples, expectedSamples, sampleAsserters)
 }
 
 func TestScriptFilter(t *testing.T) {
@@ -107,24 +161,7 @@ func TestScriptFilter(t *testing.T) {
 	})
 }
 
-func deepEqualPointers(a, b *any) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-
-	aAsFloat, aIsFloat := (*a).(float64)
-	bAsFloat, bIsFloat := (*b).(float64)
-	if aIsFloat && bIsFloat && math.IsNaN(aAsFloat) && math.IsNaN(bAsFloat) {
-		return true
-	}
-
-	return reflect.DeepEqual(*a, *b)
-}
-
-func assertEqualLinesInArbitraryOrder(t *testing.T, actual []string, expected []string) {
+func assertEqualLinesInArbitraryOrder(t *testing.T, actual []string, expected []string, asserters []SampleAsserter) {
 	if len(actual) != len(expected) {
 		t.Errorf("Expected %d lines, got %d", len(expected), len(actual))
 	}
@@ -134,6 +171,16 @@ func assertEqualLinesInArbitraryOrder(t *testing.T, actual []string, expected []
 
 	for i, exp := range expected {
 		act := actual[i]
+		asserterMatch := false
+		for _, asserter := range asserters {
+			asserterMatch = asserter.Assert(t, act)
+			if asserterMatch {
+				break
+			}
+		}
+		if asserterMatch {
+			continue
+		}
 		if act != exp {
 			t.Errorf("Expected line %d to be %q, got %q", i, exp, act)
 		}

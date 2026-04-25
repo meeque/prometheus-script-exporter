@@ -281,7 +281,7 @@ func testHandler(t *testing.T, handler OutputHandler, testConfigs []OutputHandle
 			"with_"+testConfig.Name,
 			func(t *testing.T) {
 				samples := handler.Handle(testConfig.Name, bytes.NewBufferString(testConfig.Output))
-				assertEqualLinesInArbitraryOrder(t, samples, testConfig.Samples)
+				assertEqualLinesInArbitraryOrder(t, samples, testConfig.Samples, []SampleAsserter{})
 			},
 		)
 	}
