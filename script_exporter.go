@@ -40,15 +40,15 @@ type Script struct {
 	Output  OutputType `yaml:"output,omitempty"`
 }
 
-func executeScript(script *Script, captureOutput bool) (stdout *bytes.Buffer, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(script.Timeout)*time.Second)
+func executeScript(script *string, timeout int64, captureOutput bool) (stdout *bytes.Buffer, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, *shell)
 
-	cmd.Stdin = strings.NewReader(script.Content)
+	cmd.Stdin = strings.NewReader(*script)
 
-	if _, ok := outputHandlers[script.Output]; ok {
+	if captureOutput {
 		stdout = &bytes.Buffer{}
 		cmd.Stdout = stdout
 	}
@@ -67,7 +67,7 @@ func runScript(script *Script) (samples []string) {
 	outputHandler := outputHandlers[script.Output]
 
 	start := time.Now()
-	outBuffer, err := executeScript(script, outputHandler != nil)
+	outBuffer, err := executeScript(&script.Content, script.Timeout, outputHandler != nil)
 	duration := time.Since(start).Seconds()
 
 	if err == nil {
