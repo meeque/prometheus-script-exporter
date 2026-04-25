@@ -18,35 +18,40 @@ const (
 )
 
 type OutputHandler interface {
-	Process(output *bytes.Buffer) (processedOutput any, err error)
-	Sample(metricName string, processedOutput any) (samples []string)
+	Handle(metricName string, output *bytes.Buffer) (samples []string)
 }
 
 type NumberOutputHandler struct {
 }
 
-func (NumberOutputHandler) Process(output *bytes.Buffer) (processedOutput any, err error) {
+func (h NumberOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples []string) {
 	trimmedOutput := strings.TrimSpace(output.String())
-	return strconv.ParseFloat(trimmedOutput, 64)
-}
+	numberOutput, err := strconv.ParseFloat(trimmedOutput, 64)
 
-func (NumberOutputHandler) Sample(metricName string, processedOutput any) (samples []string) {
-	sample := fmt.Sprintf("script_output{script=\"%s\"} %f", metricName, processedOutput.(float64))
-	return []string{sample}
+	if err != nil {
+		log.Infof("ERROR: %s: failed processing script output as number: %s", metricName, err)
+		return
+	}
+
+	samples = append(samples, fmt.Sprintf("script_output{script=\"%s\"} %f", metricName, numberOutput))
+	return
 }
 
 type JsonOutputHandler struct {
 }
 
-func (JsonOutputHandler) Process(output *bytes.Buffer) (processedOutput any, err error) {
-	err = json.Unmarshal(output.Bytes(), &processedOutput)
-	return
-}
+func (h JsonOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples []string) {
+	var jsonOutput any
+	err := json.Unmarshal(output.Bytes(), &jsonOutput)
 
-func (JsonOutputHandler) Sample(metricName string, processedOutput any) (samples []string) {
-	flatProcessedOutput := &FlatJsonOutput{}
-	flatProcessedOutput.append(".", processedOutput)
-	for name, value := range *flatProcessedOutput {
+	if err != nil {
+		log.Infof("ERROR: %s: failed processing script output as a JSON: %s", metricName, err)
+	}
+
+	flatJsonOutput := &FlatJsonOutput{}
+	flatJsonOutput.append(".", jsonOutput)
+
+	for name, value := range *flatJsonOutput {
 		samples = append(samples, fmt.Sprintf("script_output{script=\"%s\",output=\"%s\"} %s", metricName, name, value))
 	}
 	return

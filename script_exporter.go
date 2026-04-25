@@ -40,15 +40,7 @@ type Script struct {
 	Output  OutputType `yaml:"output,omitempty"`
 }
 
-type Measurement struct {
-	Script   *Script
-	Success  int
-	Status   int
-	Duration float64
-	Output   *any
-}
-
-func runScript(script *Script) (stdout *bytes.Buffer, err error) {
+func executeScript(script *Script) (stdout *bytes.Buffer, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(script.Timeout)*time.Second)
 	defer cancel()
 
@@ -68,58 +60,56 @@ func runScript(script *Script) (stdout *bytes.Buffer, err error) {
 	return
 }
 
-func runScripts(scripts []*Script) []*Measurement {
-	measurements := make([]*Measurement, 0)
+func runScript(script *Script) (samples []string, err error) {
 
-	ch := make(chan *Measurement)
+	start := time.Now()
+	success := 0
+	status := -1
+	outBuffer, err := executeScript(script)
+	duration := time.Since(start).Seconds()
+
+	if err == nil {
+		log.Debugf("OK: %s (after %fs).", script.Name, duration)
+		success = 1
+		status = 0
+	} else {
+		log.Infof("ERROR: %s: %s (failed after %fs).", script.Name, err, duration)
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			status = exitErr.ExitCode()
+		}
+	}
+
+	samples = []string{}
+	samples = append(samples, fmt.Sprintf("script_duration_seconds{script=\"%s\"} %f", script.Name, duration))
+	samples = append(samples, fmt.Sprintf("script_status{script=\"%s\"} %d", script.Name, status))
+	samples = append(samples, fmt.Sprintf("script_success{script=\"%s\"} %d", script.Name, success))
+
+	handler, outputHandlerOk := outputHandlers[script.Output]
+	if outputHandlerOk {
+		handlerSamples := handler.Handle(script.Name, outBuffer)
+		samples = append(samples, handlerSamples...)
+	}
+	return
+}
+
+func runScripts(scripts []*Script) (samples []string) {
+
+	ch := make(chan []string, len(scripts))
 
 	for _, script := range scripts {
 		go func(script *Script) {
-			start := time.Now()
-			success := 0
-			status := -1
-			outBuffer, err := runScript(script)
-			duration := time.Since(start).Seconds()
-
-			if err == nil {
-				log.Debugf("OK: %s (after %fs).", script.Name, duration)
-				success = 1
-				status = 0
-			} else {
-				log.Infof("ERROR: %s: %s (failed after %fs).", script.Name, err, duration)
-				var exitErr *exec.ExitError
-				if errors.As(err, &exitErr) {
-					status = exitErr.ExitCode()
-				}
-			}
-
-			var output *any
-			handler, ok := outputHandlers[script.Output]
-			if ok {
-				processedOutput, err := handler.Process(outBuffer)
-				if err != nil {
-					log.Infof("ERROR: %s: failed processing script output as %s: %s", script.Name, script.Output, err)
-				} else {
-					output = &processedOutput
-				}
-
-			}
-
-			ch <- &Measurement{
-				Script:   script,
-				Duration: duration,
-				Success:  success,
-				Status:   status,
-				Output:   output,
-			}
+			// XXX check how errors should be processed! should runScripts return err at all?
+			samples, _ := runScript(script)
+			ch <- samples
 		}(script)
 	}
 
 	for i := 0; i < len(scripts); i++ {
-		measurements = append(measurements, <-ch)
+		samples = append(samples, <-ch...)
 	}
 
-	return measurements
+	return samples
 }
 
 func scriptFilter(scripts []*Script, name, pattern string) (filteredScripts []*Script, err error) {
@@ -159,20 +149,9 @@ func scriptRunHandler(w http.ResponseWriter, r *http.Request, config *Config) {
 		return
 	}
 
-	measurements := runScripts(scripts)
-
-	for _, measurement := range measurements {
-		fmt.Fprintf(w, "script_duration_seconds{script=\"%s\"} %f\n", measurement.Script.Name, measurement.Duration)
-		fmt.Fprintf(w, "script_status{script=\"%s\"} %d\n", measurement.Script.Name, measurement.Status)
-		fmt.Fprintf(w, "script_success{script=\"%s\"} %d\n", measurement.Script.Name, measurement.Success)
-
-		handler, ok := outputHandlers[measurement.Script.Output]
-		if ok {
-			samples := handler.Sample(measurement.Script.Name, *measurement.Output)
-			for _, sample := range samples {
-				fmt.Fprintln(w, sample)
-			}
-		}
+	samples := runScripts(scripts)
+	for _, sample := range samples {
+		fmt.Fprintln(w, sample)
 	}
 }
 

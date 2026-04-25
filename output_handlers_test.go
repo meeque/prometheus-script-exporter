@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"math"
-	"slices"
 	"testing"
 )
 
@@ -243,7 +242,7 @@ func TestJsonOutputHandler(t *testing.T) {
 			Samples: []string{
 				"script_output{script=\"mixed_array\",output=\"0\"} 8000.000000",
 				"script_output{script=\"mixed_array\",output=\"2\"} 42.000000",
-				"script_output{script=\"mixed_array\",output=\"3\"} 0.000000",
+				"script_output{script=\"mixed_array\",output=\"3\"} -0.000000",
 				"script_output{script=\"mixed_array\",output=\"5\"} 1.000000",
 				"script_output{script=\"mixed_array\",output=\"6\"} -3.140000",
 			},
@@ -329,70 +328,14 @@ func TestJsonOutputHandler(t *testing.T) {
 
 func testHandler(t *testing.T, handler OutputHandler, testConfigs []OutputHandlerTestConfig) {
 
-	t.Run(
-		"Process",
-		func(t *testing.T) {
-			for _, testConfig := range testConfigs {
-				t.Run(
-					"with_"+testConfig.Name,
-					func(t *testing.T) {
-						testProcess(t, handler, &testConfig)
-					},
-				)
-			}
-		},
-	)
-
-	t.Run(
-		"Print",
-		func(t *testing.T) {
-			for _, testConfig := range testConfigs {
-				t.Run(
-					"with_"+testConfig.Name,
-					func(t *testing.T) {
-						testPrint(t, handler, &testConfig)
-					},
-				)
-			}
-		},
-	)
-
-}
-
-func testProcess(t *testing.T, handler OutputHandler, testConfig *OutputHandlerTestConfig) {
-	processedOutput, err := handler.Process(bytes.NewBufferString(testConfig.Output))
-
-	if err != nil {
-		if testConfig.ProcessedOutput == nil {
-			return
-		} else {
-			t.Errorf("Unexpected error when processing output: %s", err)
-		}
-	} else {
-		if testConfig.ProcessedOutput == nil {
-			t.Errorf("Expected an error when processing output, but got none")
-		}
+	for _, testConfig := range testConfigs {
+		t.Run(
+			"with_"+testConfig.Name,
+			func(t *testing.T) {
+				samples := handler.Handle(testConfig.Name, bytes.NewBufferString(testConfig.Output))
+				assertEqualLinesInArbitraryOrder(t, samples, testConfig.Samples)
+			},
+		)
 	}
 
-	if !deepEqualPointers(&processedOutput, &testConfig.ProcessedOutput) {
-		t.Errorf("Expected output %s != %s", processedOutput, testConfig.ProcessedOutput)
-	}
-}
-
-func testPrint(t *testing.T, handler OutputHandler, testConfig *OutputHandlerTestConfig) {
-	if testConfig.ProcessedOutput == nil {
-		return
-	}
-
-	samples := handler.Sample(testConfig.Name, testConfig.ProcessedOutput)
-
-	if !equalLinesInArbitraryOrder(samples, testConfig.Samples) {
-		t.Errorf("Expected samples '%s' != '%s'", samples, testConfig.Samples)
-	}
-}
-
-func equalLinesInArbitraryOrder(linesA []string, linesB []string) bool {
-	slices.Sort(linesA)
-	slices.Sort(linesB)
-	return slices.Equal(linesA, linesB)
 }

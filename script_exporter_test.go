@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"slices"
 	"testing"
 )
 
@@ -11,7 +12,7 @@ type ExpectedMeasurement struct {
 	Success     int
 	Status      int
 	MinDuration float64
-	Output      *any
+	SampleCount int
 }
 
 var config = &Config{
@@ -25,59 +26,34 @@ var config = &Config{
 }
 
 func TestRunScripts(t *testing.T) {
-	measurements := runScripts(config.Scripts)
+	samples := runScripts(config.Scripts)
 
-	twentyThree := any(23.0)
+	expectedSamples := []string{
+		"script_duration_seconds{script=\"success\"} 0.001697",
+		"script_status{script=\"success\"} 0",
+		"script_success{script=\"success\"} 1",
 
-	fooBarMap := any(
-		map[string]any{
-			"foo": 42.0,
-			"bar": 2.71828,
-		})
+		"script_duration_seconds{script=\"failure\"} 0.001439",
+		"script_status{script=\"failure\"} 1",
+		"script_success{script=\"failure\"} 0",
 
-	expectedMeasurements := &map[string]*ExpectedMeasurement{
-		"success": {1, 0, 0, nil},
-		"failure": {0, 1, 0, nil},
-		"timeout": {0, -1, 0.9, nil},
-		"number":  {1, 0, 0, &twentyThree},
-		"json":    {1, 0, 0, &fooBarMap},
+		"script_duration_seconds{script=\"timeout\"} 1.001120",
+		"script_status{script=\"timeout\"} -1",
+		"script_success{script=\"timeout\"} 0",
+
+		"script_duration_seconds{script=\"number\"} 0.002202",
+		"script_status{script=\"number\"} 0",
+		"script_success{script=\"number\"} 1",
+		"script_output{script=\"number\"} 23.000000",
+
+		"script_duration_seconds{script=\"json\"} 0.001845",
+		"script_status{script=\"json\"} 0",
+		"script_success{script=\"json\"} 1",
+		"script_output{script=\"json\",output=\"foo\"} 42.000000",
+		"script_output{script=\"json\",output=\"bar\"} 2.718280",
 	}
 
-	if len(measurements) != len(config.Scripts) {
-		t.Errorf("Expected %d measurements, received %d", len(config.Scripts), len(measurements))
-	}
-
-	for _, measurement := range measurements {
-
-		t.Run(
-			measurement.Script.Name,
-			func(t *testing.T) {
-				expectedResult, ok := (*expectedMeasurements)[measurement.Script.Name]
-
-				if !ok {
-					t.Errorf("Got a measurement for an unexpected script: %s", measurement.Script.Name)
-					return
-				}
-
-				if measurement.Success != expectedResult.Success {
-					t.Errorf("Expected success %d != %d: %s", measurement.Success, expectedResult.Success, measurement.Script.Name)
-				}
-
-				if measurement.Status != expectedResult.Status {
-					t.Errorf("Expected status %d != %d: %s", measurement.Status, expectedResult.Status, measurement.Script.Name)
-				}
-
-				if measurement.Duration < expectedResult.MinDuration {
-					t.Errorf("Expected duration %f < %f: %s", measurement.Duration, expectedResult.MinDuration, measurement.Script.Name)
-				}
-
-				if !deepEqualPointers(measurement.Output, expectedResult.Output) {
-					t.Errorf("Expected output %s != %s: %s", stringPointer(measurement.Output), stringPointer(expectedResult.Output), measurement.Script.Name)
-				}
-			},
-		)
-
-	}
+	assertEqualLinesInArbitraryOrder(t, samples, expectedSamples)
 }
 
 func TestScriptFilter(t *testing.T) {
@@ -154,4 +130,20 @@ func stringPointer(p *any) string {
 		return "<nil>"
 	}
 	return fmt.Sprintf("%v", *p)
+}
+
+func assertEqualLinesInArbitraryOrder(t *testing.T, actual []string, expected []string) {
+	if len(actual) != len(expected) {
+		t.Errorf("Expected %d lines, got %d", len(expected), len(actual))
+	}
+
+	slices.Sort(actual)
+	slices.Sort(expected)
+
+	for i, exp := range expected {
+		act := actual[i]
+		if act != exp {
+			t.Errorf("Expected line %d to be %q, got %q", i, exp, act)
+		}
+	}
 }
