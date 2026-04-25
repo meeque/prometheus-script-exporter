@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math"
 	"reflect"
 	"slices"
@@ -123,13 +122,6 @@ func deepEqualPointers(a, b *any) bool {
 	}
 
 	return reflect.DeepEqual(*a, *b)
-}
-
-func stringPointer(p *any) string {
-	if p == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("%v", *p)
 }
 
 func assertEqualLinesInArbitraryOrder(t *testing.T, actual []string, expected []string) {

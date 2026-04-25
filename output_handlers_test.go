@@ -2,15 +2,13 @@ package main
 
 import (
 	"bytes"
-	"math"
 	"testing"
 )
 
 type OutputHandlerTestConfig struct {
-	Name            string
-	Output          string
-	ProcessedOutput any
-	Samples         []string
+	Name    string
+	Output  string
+	Samples []string
 }
 
 func TestNumberOutputHandler(t *testing.T) {
@@ -19,145 +17,128 @@ func TestNumberOutputHandler(t *testing.T) {
 	testConfigs := []OutputHandlerTestConfig{
 
 		{
-			Name:            "text",
-			Output:          "leet",
-			ProcessedOutput: nil,
-			Samples:         nil,
+			Name:    "text",
+			Output:  "leet",
+			Samples: nil,
 		},
 
 		{
-			Name:            "two_numbers",
-			Output:          "19  79",
-			ProcessedOutput: nil,
-			Samples:         nil,
+			Name:    "two_numbers",
+			Output:  "19  79",
+			Samples: nil,
 		},
 
 		{
-			Name:            "number_with_text",
-			Output:          "10000000 dollars",
-			ProcessedOutput: nil,
-			Samples:         nil,
+			Name:    "number_with_text",
+			Output:  "10000000 dollars",
+			Samples: nil,
 		},
 
 		{
-			Name:            "integer",
-			Output:          "1337",
-			ProcessedOutput: any(1337.0),
+			Name:   "integer",
+			Output: "1337",
 			Samples: []string{
 				"script_output{script=\"integer\"} 1337.000000",
 			},
 		},
 
 		{
-			Name:            "positive_integer",
-			Output:          "+1999",
-			ProcessedOutput: any(1999.0),
+			Name:   "positive_integer",
+			Output: "+1999",
 			Samples: []string{
 				"script_output{script=\"positive_integer\"} 1999.000000",
 			},
 		},
 
 		{
-			Name:            "negative_integer",
-			Output:          "-1999",
-			ProcessedOutput: any(-1999.0),
+			Name:   "negative_integer",
+			Output: "-1999",
 			Samples: []string{
 				"script_output{script=\"negative_integer\"} -1999.000000",
 			},
 		},
 
 		{
-			Name:            "decimal",
-			Output:          "23.42",
-			ProcessedOutput: any(23.42),
+			Name:   "decimal",
+			Output: "23.42",
 			Samples: []string{
 				"script_output{script=\"decimal\"} 23.420000",
 			},
 		},
 
 		{
-			Name:            "positive_decimal",
-			Output:          "+2.71",
-			ProcessedOutput: any(2.71),
+			Name:   "positive_decimal",
+			Output: "+2.71",
 			Samples: []string{
 				"script_output{script=\"positive_decimal\"} 2.710000",
 			},
 		},
 
 		{
-			Name:            "negative_decimal",
-			Output:          "-3.14",
-			ProcessedOutput: any(-3.14),
+			Name:   "negative_decimal",
+			Output: "-3.14",
 			Samples: []string{
 				"script_output{script=\"negative_decimal\"} -3.140000",
 			},
 		},
 
 		{
-			Name:            "number_with_padding",
-			Output:          "  69  ",
-			ProcessedOutput: any(69.0),
+			Name:   "number_with_padding",
+			Output: "  69  ",
 			Samples: []string{
 				"script_output{script=\"number_with_padding\"} 69.000000",
 			},
 		},
 
 		{
-			Name:            "hex",
-			Output:          "0x0000ff",
-			ProcessedOutput: nil,
-			Samples:         nil,
+			Name:    "hex",
+			Output:  "0x0000ff",
+			Samples: nil,
 		},
 
 		{
-			Name:            "decimal_with_leading_zero",
-			Output:          "0755",
-			ProcessedOutput: any(755.0),
+			Name:   "decimal_with_leading_zero",
+			Output: "0755",
 			Samples: []string{
 				"script_output{script=\"decimal_with_leading_zero\"} 755.000000",
 			},
 		},
 
 		{
-			Name:            "not_a_number",
-			Output:          "NaN",
-			ProcessedOutput: any(math.NaN()),
+			Name:   "not_a_number",
+			Output: "NaN",
 			Samples: []string{
 				"script_output{script=\"not_a_number\"} NaN",
 			},
 		},
 
 		{
-			Name:            "inf",
-			Output:          "inf",
-			ProcessedOutput: any(math.Inf(1)),
+			Name:   "inf",
+			Output: "inf",
 			Samples: []string{
 				"script_output{script=\"inf\"} +Inf",
 			},
 		},
 
 		{
-			Name:            "infinity",
-			Output:          "InfInIty",
-			ProcessedOutput: any(math.Inf(1)),
+			Name:   "infinity",
+			Output: "InfInIty",
 			Samples: []string{
 				"script_output{script=\"infinity\"} +Inf",
 			},
 		},
 
 		{
-			Name:            "positive_infinity",
-			Output:          "+infinity",
-			ProcessedOutput: any(math.Inf(1)),
+			Name:   "positive_infinity",
+			Output: "+infinity",
 			Samples: []string{
 				"script_output{script=\"positive_infinity\"} +Inf",
 			},
 		},
 
 		{
-			Name:            "negative_infinity",
-			Output:          "-iNfiNiTy",
-			ProcessedOutput: any(math.Inf(-1)),
+			Name:   "negative_infinity",
+			Output: "-iNfiNiTy",
 			Samples: []string{
 				"script_output{script=\"negative_infinity\"} -Inf",
 			},
@@ -173,59 +154,52 @@ func TestJsonOutputHandler(t *testing.T) {
 	testConfigs := []OutputHandlerTestConfig{
 
 		{
-			Name:            "invalid_json",
-			Output:          "{ not a mapping }",
-			ProcessedOutput: nil,
-			Samples:         nil,
+			Name:    "invalid_json",
+			Output:  "{ not a mapping }",
+			Samples: nil,
 		},
 
 		{
-			Name:            "true",
-			Output:          "true",
-			ProcessedOutput: any(true),
+			Name:   "true",
+			Output: "true",
 			Samples: []string{
 				"script_output{script=\"true\",output=\".\"} 1.000000",
 			},
 		},
 
 		{
-			Name:            "false",
-			Output:          "false",
-			ProcessedOutput: any(false),
+			Name:   "false",
+			Output: "false",
 			Samples: []string{
 				"script_output{script=\"false\",output=\".\"} 0.000000",
 			},
 		},
 
 		{
-			Name:            "number",
-			Output:          "1701",
-			ProcessedOutput: any(1701.0),
+			Name:   "number",
+			Output: "1701",
 			Samples: []string{
 				"script_output{script=\"number\",output=\".\"} 1701.000000",
 			},
 		},
 
 		{
-			Name:            "string",
-			Output:          "\"howdy\"",
-			ProcessedOutput: any("howdy"),
-			Samples:         []string{},
+			Name:    "string",
+			Output:  "\"howdy\"",
+			Samples: []string{},
 		},
 
 		{
-			Name:            "numeric_string",
-			Output:          "\"2001\"",
-			ProcessedOutput: any("2001"),
+			Name:   "numeric_string",
+			Output: "\"2001\"",
 			Samples: []string{
 				"script_output{script=\"numeric_string\",output=\".\"} 2001.000000",
 			},
 		},
 
 		{
-			Name:            "array",
-			Output:          "[1, 2, 4, 8, 16]",
-			ProcessedOutput: any([]any{1.0, 2.0, 4.0, 8.0, 16.0}),
+			Name:   "array",
+			Output: "[1, 2, 4, 8, 16]",
 			Samples: []string{
 				"script_output{script=\"array\",output=\"0\"} 1.000000",
 				"script_output{script=\"array\",output=\"1\"} 2.000000",
@@ -236,9 +210,8 @@ func TestJsonOutputHandler(t *testing.T) {
 		},
 
 		{
-			Name:            "mixed_array",
-			Output:          "[8000, null, \"42\", -0.0, \"ahoj!\", true, -3.14]",
-			ProcessedOutput: any([]any{8000.0, nil, "42", 0.0, "ahoj!", true, -3.14}),
+			Name:   "mixed_array",
+			Output: "[8000, null, \"42\", -0.0, \"ahoj!\", true, -3.14]",
 			Samples: []string{
 				"script_output{script=\"mixed_array\",output=\"0\"} 8000.000000",
 				"script_output{script=\"mixed_array\",output=\"2\"} 42.000000",
@@ -254,10 +227,6 @@ func TestJsonOutputHandler(t *testing.T) {
 				"\"foo\": 42," +
 				"\"bar\": 2.71828" +
 				"}",
-			ProcessedOutput: any(map[string]any{
-				"foo": 42.0,
-				"bar": 2.71828,
-			}),
 			Samples: []string{
 				"script_output{script=\"object\",output=\"foo\"} 42.000000",
 				"script_output{script=\"object\",output=\"bar\"} 2.718280",
@@ -270,10 +239,6 @@ func TestJsonOutputHandler(t *testing.T) {
 				"\"text\": \"foo\"," +
 				"\"number\": 7" +
 				"}",
-			ProcessedOutput: any(map[string]any{
-				"text":   "foo",
-				"number": 7.0,
-			}),
 			Samples: []string{
 				"script_output{script=\"mixed_object\",output=\"number\"} 7.000000",
 			},
@@ -294,23 +259,6 @@ func TestJsonOutputHandler(t *testing.T) {
 				"\"empty\": []" +
 				"}" +
 				"}",
-			ProcessedOutput: any(map[string]any{
-				"text":    "foo",
-				"number":  7.0,
-				"boolean": true,
-				"array": []any{
-					true,
-					2.0,
-					"3",
-				},
-				"empty": []any{},
-				"nested": any(map[string]any{
-					"null":    nil,
-					"boolean": false,
-					"pi":      "3.14",
-					"empty":   []any{},
-				}),
-			}),
 			Samples: []string{
 				"script_output{script=\"nested_json\",output=\"number\"} 7.000000",
 				"script_output{script=\"nested_json\",output=\"boolean\"} 1.000000",
