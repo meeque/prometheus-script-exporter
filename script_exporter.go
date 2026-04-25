@@ -105,7 +105,7 @@ func runScripts(scripts []*Script) (samples []string) {
 		}()
 	}
 
-	for i := 0; i < len(scripts); i++ {
+	for range scripts {
 		samples = append(samples, <-ch...)
 	}
 
