@@ -1,6 +1,6 @@
 module github.com/adhocteam/script_exporter
 
-go 1.19
+go 1.24
 
 require (
 	github.com/prometheus/client_golang v1.5.1
