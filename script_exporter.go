@@ -40,7 +40,7 @@ type Script struct {
 	Output  OutputType `yaml:"output,omitempty"`
 }
 
-func executeScript(script *Script) (stdout *bytes.Buffer, err error) {
+func executeScript(script *Script, captureOutput bool) (stdout *bytes.Buffer, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(script.Timeout)*time.Second)
 	defer cancel()
 
@@ -60,12 +60,14 @@ func executeScript(script *Script) (stdout *bytes.Buffer, err error) {
 	return
 }
 
-func runScript(script *Script) (samples []string, err error) {
+func runScript(script *Script) (samples []string) {
 
-	start := time.Now()
 	success := 0
 	status := -1
-	outBuffer, err := executeScript(script)
+	outputHandler := outputHandlers[script.Output]
+
+	start := time.Now()
+	outBuffer, err := executeScript(script, outputHandler != nil)
 	duration := time.Since(start).Seconds()
 
 	if err == nil {
@@ -80,14 +82,14 @@ func runScript(script *Script) (samples []string, err error) {
 		}
 	}
 
-	samples = []string{}
-	samples = append(samples, fmt.Sprintf("script_duration_seconds{script=\"%s\"} %f", script.Name, duration))
-	samples = append(samples, fmt.Sprintf("script_status{script=\"%s\"} %d", script.Name, status))
-	samples = append(samples, fmt.Sprintf("script_success{script=\"%s\"} %d", script.Name, success))
+	samples = []string{
+		fmt.Sprintf("script_duration_seconds{script=\"%s\"} %f", script.Name, duration),
+		fmt.Sprintf("script_status{script=\"%s\"} %d", script.Name, status),
+		fmt.Sprintf("script_success{script=\"%s\"} %d", script.Name, success),
+	}
 
-	handler, outputHandlerOk := outputHandlers[script.Output]
-	if outputHandlerOk {
-		handlerSamples := handler.Handle(script.Name, outBuffer)
+	if outputHandler != nil {
+		handlerSamples := outputHandler.Handle(script.Name, outBuffer)
 		samples = append(samples, handlerSamples...)
 	}
 	return
@@ -98,11 +100,9 @@ func runScripts(scripts []*Script) (samples []string) {
 	ch := make(chan []string, len(scripts))
 
 	for _, script := range scripts {
-		go func(script *Script) {
-			// XXX check how errors should be processed! should runScripts return err at all?
-			samples, _ := runScript(script)
-			ch <- samples
-		}(script)
+		go func() {
+			ch <- runScript(script)
+		}()
 	}
 
 	for i := 0; i < len(scripts); i++ {
