@@ -11,7 +11,7 @@ import (
 )
 
 type SampleAsserter interface {
-	Assert(t *testing.T, sample string) (isMatch bool)
+	Assert(t *testing.T, sample string)
 	Placeholder() string
 }
 
@@ -19,12 +19,10 @@ type ExactMatchAsserter struct {
 	Sample string
 }
 
-func (a ExactMatchAsserter) Assert(t *testing.T, sample string) (isMatch bool) {
-	isMatch = (sample == a.Sample)
-	if !isMatch {
+func (a ExactMatchAsserter) Assert(t *testing.T, sample string) {
+	if sample != a.Sample {
 		t.Errorf("Expected sample %s, got %s", a.Sample, sample)
 	}
-	return
 }
 
 func (a ExactMatchAsserter) Placeholder() string {
@@ -38,9 +36,7 @@ type MinDurationAsserter struct {
 	Min             float64
 }
 
-func (a MinDurationAsserter) Assert(t *testing.T, sample string) (isMatch bool) {
-	isMatch = a.SamplePattern.Match([]byte(sample))
-
+func (a MinDurationAsserter) Assert(t *testing.T, sample string) {
 	durationString := a.DurationPattern.Find([]byte(sample))
 	if durationString == nil {
 		t.Errorf("Could not find duration pattern %s in sample %s", a.DurationPattern.String(), sample)
@@ -55,8 +51,6 @@ func (a MinDurationAsserter) Assert(t *testing.T, sample string) (isMatch bool) 
 	if duration < a.Min {
 		t.Errorf("Expected sampled duration to be at least %f, but got %f", a.Min, duration)
 	}
-
-	return
 }
 
 func (a MinDurationAsserter) Placeholder() string {
