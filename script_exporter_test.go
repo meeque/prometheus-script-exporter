@@ -197,9 +197,9 @@ func assertSamples(t *testing.T, actual []Sample, expected []any) {
 			} else {
 				t.Errorf("Failed to parse expected sample: %s", exp)
 			}
-
+		default:
+			t.Logf("Unsupported type %T of expected Sample.", exp)
 		}
-		// XXX silently ignore other types?
 	}
 
 	assertSampleAsserters(t, actual, asserters)

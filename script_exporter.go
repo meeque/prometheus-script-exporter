@@ -54,13 +54,9 @@ func (s *Sample) String() string {
 	buf.WriteString("{")
 	labelNames := slices.Collect(maps.Keys(s.Labels))
 	slices.Sort(labelNames)
-	slices.Reverse(labelNames)
 	for labelNum, labelName := range labelNames {
-		buf.WriteString(labelName)
-		buf.WriteString("=\"")
-		// XXX encode value!
-		buf.WriteString(s.Labels[labelName])
-		buf.WriteString("\"")
+		buf.WriteString(encodeSamplePart(labelName, false))
+		buf.WriteString(encodeSamplePart(s.Labels[labelName], true))
 		if labelNum < len(labelNames)-1 {
 			buf.WriteString(",")
 		}
@@ -68,6 +64,16 @@ func (s *Sample) String() string {
 	buf.WriteString("} ")
 	buf.WriteString(strconv.FormatFloat(s.Value, 'f', -1, 64))
 	return buf.String()
+}
+
+func encodeSamplePart(part string, force bool) string {
+	if force || strings.ContainsAny(part, "\n\"\\") {
+		part = strings.ReplaceAll(part, "\n", "\\n")
+		part = strings.ReplaceAll(part, "\"", "\\\"")
+		part = strings.ReplaceAll(part, "\\", "\\\\")
+		return "\"" + part + "\""
+	}
+	return part
 }
 
 func executeScript(script *string, timeout int64, captureOutput bool) (stdout *bytes.Buffer, err error) {
