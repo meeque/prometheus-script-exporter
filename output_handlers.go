@@ -18,13 +18,13 @@ const (
 )
 
 type OutputHandler interface {
-	Handle(metricName string, output *bytes.Buffer) (samples []string)
+	Handle(metricName string, output *bytes.Buffer) (samples []Sample)
 }
 
 type NumberOutputHandler struct {
 }
 
-func (h NumberOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples []string) {
+func (h NumberOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples []Sample) {
 	trimmedOutput := strings.TrimSpace(output.String())
 	numberOutput, err := strconv.ParseFloat(trimmedOutput, 64)
 
@@ -33,14 +33,20 @@ func (h NumberOutputHandler) Handle(metricName string, output *bytes.Buffer) (sa
 		return
 	}
 
-	samples = append(samples, fmt.Sprintf("script_output{script=\"%s\"} %f", metricName, numberOutput))
+	sample := Sample{
+		Name:   "script_output",
+		Labels: map[string]string{"script": metricName},
+		Value:  numberOutput,
+	}
+
+	samples = append(samples, sample)
 	return
 }
 
 type JsonOutputHandler struct {
 }
 
-func (h JsonOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples []string) {
+func (h JsonOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples []Sample) {
 	var jsonOutput any
 	err := json.Unmarshal(output.Bytes(), &jsonOutput)
 
@@ -52,12 +58,18 @@ func (h JsonOutputHandler) Handle(metricName string, output *bytes.Buffer) (samp
 	flatJsonOutput.append(".", jsonOutput)
 
 	for name, value := range *flatJsonOutput {
-		samples = append(samples, fmt.Sprintf("script_output{script=\"%s\",output=\"%s\"} %s", metricName, name, value))
+
+		sample := Sample{
+			Name:   "script_output",
+			Labels: map[string]string{"script": metricName, "output": name},
+			Value:  value,
+		}
+		samples = append(samples, sample)
 	}
 	return
 }
 
-type FlatJsonOutput map[string]string
+type FlatJsonOutput map[string]float64
 
 func (o *FlatJsonOutput) append(path string, value any) {
 	switch value := value.(type) {
@@ -85,7 +97,7 @@ func (o *FlatJsonOutput) append(path string, value any) {
 		}
 	// recursion only terminates below here
 	case float64:
-		(*o)[path] = fmt.Sprintf("%f", value)
+		(*o)[path] = value
 	default:
 		log.Debugf("WARN: Silently ignoring non-numeric JSON value at path '%s'", path)
 	}

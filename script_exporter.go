@@ -6,10 +6,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"maps"
 	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,6 +43,33 @@ type Script struct {
 	Output  OutputType `yaml:"output,omitempty"`
 }
 
+type Sample struct {
+	Name   string
+	Labels map[string]string
+	Value  float64
+}
+
+func (s *Sample) String() string {
+	buf := bytes.NewBufferString(s.Name)
+	buf.WriteString("{")
+	labelNames := slices.Collect(maps.Keys(s.Labels))
+	slices.Sort(labelNames)
+	slices.Reverse(labelNames)
+	for labelNum, labelName := range labelNames {
+		buf.WriteString(labelName)
+		buf.WriteString("=\"")
+		// XXX encode value!
+		buf.WriteString(s.Labels[labelName])
+		buf.WriteString("\"")
+		if labelNum < len(labelNames)-1 {
+			buf.WriteString(",")
+		}
+	}
+	buf.WriteString("} ")
+	buf.WriteString(strconv.FormatFloat(s.Value, 'f', -1, 64))
+	return buf.String()
+}
+
 func executeScript(script *string, timeout int64, captureOutput bool) (stdout *bytes.Buffer, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
@@ -60,7 +90,7 @@ func executeScript(script *string, timeout int64, captureOutput bool) (stdout *b
 	return
 }
 
-func runScript(script *Script) (samples []string) {
+func runScript(script *Script) (samples []Sample) {
 
 	success := 0
 	status := -1
@@ -82,10 +112,22 @@ func runScript(script *Script) (samples []string) {
 		}
 	}
 
-	samples = []string{
-		fmt.Sprintf("script_duration_seconds{script=\"%s\"} %f", script.Name, duration),
-		fmt.Sprintf("script_status{script=\"%s\"} %d", script.Name, status),
-		fmt.Sprintf("script_success{script=\"%s\"} %d", script.Name, success),
+	samples = []Sample{
+		{
+			Name:   "script_duration_seconds",
+			Labels: map[string]string{"script": script.Name},
+			Value:  duration,
+		},
+		{
+			Name:   "script_status",
+			Labels: map[string]string{"script": script.Name},
+			Value:  float64(status),
+		},
+		{
+			Name:   "script_success",
+			Labels: map[string]string{"script": script.Name},
+			Value:  float64(success),
+		},
 	}
 
 	if outputHandler != nil {
@@ -95,9 +137,9 @@ func runScript(script *Script) (samples []string) {
 	return
 }
 
-func runScripts(scripts []*Script) (samples []string) {
+func runScripts(scripts []*Script) (samples []Sample) {
 
-	ch := make(chan []string, len(scripts))
+	ch := make(chan []Sample, len(scripts))
 
 	for _, script := range scripts {
 		go func() {

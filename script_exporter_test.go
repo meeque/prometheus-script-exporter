@@ -1,17 +1,38 @@
 package main
 
 import (
+	"cmp"
+	"errors"
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 )
 
 type SampleAsserter interface {
 	Assert(t *testing.T, sample string) (isMatch bool)
+	Placeholder() string
+}
+
+type ExactMatchAsserter struct {
+	Sample string
+}
+
+func (a ExactMatchAsserter) Assert(t *testing.T, sample string) (isMatch bool) {
+	isMatch = (sample == a.Sample)
+	if !isMatch {
+		t.Errorf("Expected sample %s, got %s", a.Sample, sample)
+	}
+	return
+}
+
+func (a ExactMatchAsserter) Placeholder() string {
+	return a.Sample
 }
 
 type MinDurationAsserter struct {
+	placeholder     string
 	SamplePattern   regexp.Regexp
 	DurationPattern regexp.Regexp
 	Min             float64
@@ -19,23 +40,27 @@ type MinDurationAsserter struct {
 
 func (a MinDurationAsserter) Assert(t *testing.T, sample string) (isMatch bool) {
 	isMatch = a.SamplePattern.Match([]byte(sample))
-	if isMatch {
-		durationString := a.DurationPattern.Find([]byte(sample))
-		if durationString == nil {
-			t.Errorf("Could not find duration pattern %s in sample %s", a.DurationPattern.String(), sample)
-			return
 
-		}
-		duration, err := strconv.ParseFloat(string(durationString), 64)
-		if err != nil {
-			t.Errorf("Could not parse sampled duration %s as number: %s", string(durationString), err)
-			return
-		}
-		if duration < a.Min {
-			t.Errorf("Expected sampled duration to be at least %f, but got %f", a.Min, duration)
-		}
+	durationString := a.DurationPattern.Find([]byte(sample))
+	if durationString == nil {
+		t.Errorf("Could not find duration pattern %s in sample %s", a.DurationPattern.String(), sample)
+		return
+
 	}
+	duration, err := strconv.ParseFloat(string(durationString), 64)
+	if err != nil {
+		t.Errorf("Could not parse sampled duration %s as number: %s", string(durationString), err)
+		return
+	}
+	if duration < a.Min {
+		t.Errorf("Expected sampled duration to be at least %f, but got %f", a.Min, duration)
+	}
+
 	return
+}
+
+func (a MinDurationAsserter) Placeholder() string {
+	return a.placeholder
 }
 
 var config = &Config{
@@ -49,64 +74,61 @@ var config = &Config{
 }
 
 func TestRunScripts(t *testing.T) {
-	samples := runScripts(config.Scripts)
-
-	expectedSamples := []string{
-		"script_duration_seconds{script=\"success\"} ?.??",
-		"script_status{script=\"success\"} 0",
-		"script_success{script=\"success\"} 1",
-
-		"script_duration_seconds{script=\"failure\"} ?.??",
-		"script_status{script=\"failure\"} 1",
-		"script_success{script=\"failure\"} 0",
-
-		"script_duration_seconds{script=\"timeout\"} ?.??",
-		"script_status{script=\"timeout\"} -1",
-		"script_success{script=\"timeout\"} 0",
-
-		"script_duration_seconds{script=\"number\"} ?.??",
-		"script_status{script=\"number\"} 0",
-		"script_success{script=\"number\"} 1",
-		"script_output{script=\"number\"} 23.000000",
-
-		"script_duration_seconds{script=\"json\"} 0.001845",
-		"script_status{script=\"json\"} 0",
-		"script_success{script=\"json\"} 1",
-		"script_output{script=\"json\",output=\"foo\"} 42.000000",
-		"script_output{script=\"json\",output=\"bar\"} 2.718280",
-	}
-
 	valueRegexp := regexp.MustCompile(`[^\s]+$`)
 
-	sampleAsserters := []SampleAsserter{
+	expectedSamples := []any{
 		MinDurationAsserter{
+			"script_duration_seconds{script=\"success\"",
 			*regexp.MustCompile(`^script_duration_seconds[{].*script="success".*[}]\s+`),
 			*valueRegexp,
 			0.0,
 		},
+		"script_status{script=\"success\"} 0",
+		"script_success{script=\"success\"} 1",
+
 		MinDurationAsserter{
+			"script_duration_seconds{script=\"failure\"",
 			*regexp.MustCompile(`^script_duration_seconds[{].*script="failure".*[}]\s+`),
 			*valueRegexp,
 			0.0,
 		},
+		"script_status{script=\"failure\"} 1",
+		"script_success{script=\"failure\"} 0",
+
 		MinDurationAsserter{
+			"script_duration_seconds{script=\"timeout\"",
 			*regexp.MustCompile(`^script_duration_seconds[{].*script="timeout".*[}]\s+`),
 			*valueRegexp,
 			0.9,
 		},
+		"script_status{script=\"timeout\"} -1",
+		"script_success{script=\"timeout\"} 0",
+
 		MinDurationAsserter{
+			"script_duration_seconds{script=\"number\"",
 			*regexp.MustCompile(`^script_duration_seconds[{].*script="number".*[}]\s+`),
 			*valueRegexp,
 			0.0,
 		},
+		"script_status{script=\"number\"} 0",
+		"script_success{script=\"number\"} 1",
+		"script_output{script=\"number\"} 23",
+
 		MinDurationAsserter{
+			"script_duration_seconds{script=\"json\"",
 			*regexp.MustCompile(`^script_duration_seconds[{].*script="json".*[}]\s+`),
 			*valueRegexp,
 			0.0,
 		},
+		"script_status{script=\"json\"} 0",
+		"script_success{script=\"json\"} 1",
+		"script_output{script=\"json\",output=\"foo\"} 42",
+		"script_output{script=\"json\",output=\"bar\"} 2.71828",
 	}
 
-	assertEqualLinesInArbitraryOrder(t, samples, expectedSamples, sampleAsserters)
+	samples := runScripts(config.Scripts)
+
+	assertSamples(t, samples, expectedSamples)
 }
 
 func TestScriptFilter(t *testing.T) {
@@ -161,28 +183,80 @@ func TestScriptFilter(t *testing.T) {
 	})
 }
 
-func assertEqualLinesInArbitraryOrder(t *testing.T, actual []string, expected []string, asserters []SampleAsserter) {
-	if len(actual) != len(expected) {
-		t.Errorf("Expected %d lines, got %d", len(expected), len(actual))
+func compareSamples(a, b Sample) int {
+	return cmp.Compare(a.String(), b.String())
+}
+
+func compareSampleAsserters(a, b SampleAsserter) int {
+	return cmp.Compare(a.Placeholder(), b.Placeholder())
+}
+
+func assertSamples(t *testing.T, actual []Sample, expected []any) {
+	asserters := []SampleAsserter{}
+
+	for _, exp := range expected {
+		switch exp := exp.(type) {
+		case SampleAsserter:
+			asserters = append(asserters, exp)
+		case string:
+			asserters = append(asserters, ExactMatchAsserter{exp})
+		}
+		// XXX silently ignore other types?
 	}
 
-	slices.Sort(actual)
-	slices.Sort(expected)
+	assertSampleAsserters(t, actual, asserters)
+}
 
-	for i, exp := range expected {
-		act := actual[i]
-		asserterMatch := false
-		for _, asserter := range asserters {
-			asserterMatch = asserter.Assert(t, act)
-			if asserterMatch {
-				break
-			}
-		}
-		if asserterMatch {
-			continue
-		}
-		if act != exp {
-			t.Errorf("Expected line %d to be %q, got %q", i, exp, act)
-		}
+func assertSampleAsserters(t *testing.T, actual []Sample, asserters []SampleAsserter) {
+	if len(actual) != len(asserters) {
+		t.Errorf("Expected %d lines, got %d", len(asserters), len(actual))
 	}
+
+	slices.SortFunc(actual, compareSamples)
+	slices.SortFunc(asserters, compareSampleAsserters)
+
+	for i, asserter := range asserters {
+		asserter.Assert(t, actual[i].String())
+	}
+}
+
+func parseSample(s string) (sample *Sample, err error) {
+	samplePattern := regexp.MustCompile(`^([-_a-zA-Z0-9])\s*[{]([^]])[}]\s+(\S+)$`)
+	sampleParts := samplePattern.FindStringSubmatch(s)
+	if sampleParts == nil {
+		return nil, errors.New("Sample '" + s + "' does not match expected pattern " + samplePattern.String() + ".")
+	}
+
+	name := sampleParts[1]
+	labelsPart := sampleParts[2]
+	valuePart := sampleParts[3]
+
+	value, err := strconv.ParseFloat(valuePart, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	sample = &Sample{
+		Name:   name,
+		Labels: map[string]string{},
+		Value:  value,
+	}
+
+	labels := strings.Split(labelsPart, ",")
+	for _, label := range labels {
+		labelParts := strings.SplitN(label, "=", 2)
+		if len(labelParts) < 2 {
+			return nil, errors.New("Sample contains label '" + label + "', which does not match expected form 'name=\"value\"'.")
+		}
+		labelName := strings.TrimSpace(labelParts[0])
+		labelValue := strings.TrimSpace(labelParts[1])
+
+		quotedStringPattern := regexp.MustCompile(`^"(.*)"$`)
+		if q := quotedStringPattern.FindStringSubmatch(labelValue); q != nil {
+			labelValue = q[1]
+		}
+		sample.Labels[labelName] = labelValue
+	}
+
+	return
 }
