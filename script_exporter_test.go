@@ -3,6 +3,8 @@ package main
 import (
 	"cmp"
 	"errors"
+	"maps"
+	"math"
 	"regexp"
 	"slices"
 	"strconv"
@@ -10,23 +12,29 @@ import (
 	"testing"
 )
 
+func (s1 Sample) Equal(s2 Sample) bool {
+	return s1.Name == s2.Name &&
+		maps.Equal(s1.Labels, s2.Labels) &&
+		(s1.Value == s2.Value || (math.IsNaN(s1.Value) && math.IsNaN(s2.Value)))
+}
+
 type SampleAsserter interface {
-	Assert(t *testing.T, sample string)
+	Assert(t *testing.T, sample *Sample)
 	Placeholder() string
 }
 
 type ExactMatchAsserter struct {
-	Sample string
+	Sample *Sample
 }
 
-func (a ExactMatchAsserter) Assert(t *testing.T, sample string) {
-	if sample != a.Sample {
+func (a ExactMatchAsserter) Assert(t *testing.T, sample *Sample) {
+	if !a.Sample.Equal(*sample) {
 		t.Errorf("Expected sample %s, got %s", a.Sample, sample)
 	}
 }
 
 func (a ExactMatchAsserter) Placeholder() string {
-	return a.Sample
+	return a.Sample.String()
 }
 
 type MinDurationAsserter struct {
@@ -36,20 +44,9 @@ type MinDurationAsserter struct {
 	Min             float64
 }
 
-func (a MinDurationAsserter) Assert(t *testing.T, sample string) {
-	durationString := a.DurationPattern.Find([]byte(sample))
-	if durationString == nil {
-		t.Errorf("Could not find duration pattern %s in sample %s", a.DurationPattern.String(), sample)
-		return
-
-	}
-	duration, err := strconv.ParseFloat(string(durationString), 64)
-	if err != nil {
-		t.Errorf("Could not parse sampled duration %s as number: %s", string(durationString), err)
-		return
-	}
-	if duration < a.Min {
-		t.Errorf("Expected sampled duration to be at least %f, but got %f", a.Min, duration)
+func (a MinDurationAsserter) Assert(t *testing.T, sample *Sample) {
+	if sample.Value < a.Min {
+		t.Errorf("Expected sampled duration to be at least %f, but got %f", a.Min, sample.Value)
 	}
 }
 
@@ -192,8 +189,15 @@ func assertSamples(t *testing.T, actual []Sample, expected []any) {
 		switch exp := exp.(type) {
 		case SampleAsserter:
 			asserters = append(asserters, exp)
+		case Sample:
+			asserters = append(asserters, ExactMatchAsserter{&exp})
 		case string:
-			asserters = append(asserters, ExactMatchAsserter{exp})
+			if s, err := parseSample(exp); err == nil {
+				asserters = append(asserters, ExactMatchAsserter{s})
+			} else {
+				t.Errorf("Failed to parse expected sample: %s", exp)
+			}
+
 		}
 		// XXX silently ignore other types?
 	}
@@ -203,19 +207,19 @@ func assertSamples(t *testing.T, actual []Sample, expected []any) {
 
 func assertSampleAsserters(t *testing.T, actual []Sample, asserters []SampleAsserter) {
 	if len(actual) != len(asserters) {
-		t.Errorf("Expected %d lines, got %d", len(asserters), len(actual))
+		t.Errorf("Expected %d samples, got %d", len(asserters), len(actual))
 	}
 
 	slices.SortFunc(actual, compareSamples)
 	slices.SortFunc(asserters, compareSampleAsserters)
 
 	for i, asserter := range asserters {
-		asserter.Assert(t, actual[i].String())
+		asserter.Assert(t, &actual[i])
 	}
 }
 
 func parseSample(s string) (sample *Sample, err error) {
-	samplePattern := regexp.MustCompile(`^([-_a-zA-Z0-9])\s*[{]([^]])[}]\s+(\S+)$`)
+	samplePattern := regexp.MustCompile(`^([-_a-zA-Z0-9]+)\s*[{]([^]]+)[}]\s+(\S+)$`)
 	sampleParts := samplePattern.FindStringSubmatch(s)
 	if sampleParts == nil {
 		return nil, errors.New("Sample '" + s + "' does not match expected pattern " + samplePattern.String() + ".")
