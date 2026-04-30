@@ -186,7 +186,7 @@ func TestJsonOutputHandler(t *testing.T) {
 		{
 			Name:    "string",
 			Output:  "\"howdy\"",
-			Samples: []string{},
+			Samples: nil,
 		},
 
 		{
@@ -280,7 +280,12 @@ func testHandler(t *testing.T, handler OutputHandler, testConfigs []OutputHandle
 		t.Run(
 			"with_"+testConfig.Name,
 			func(t *testing.T) {
-				samples := handler.Handle(testConfig.Name, bytes.NewBufferString(testConfig.Output))
+				samples, err := handler.Handle(testConfig.Name, bytes.NewBufferString(testConfig.Output))
+				if err != nil && testConfig.Samples == nil {
+					return
+				}
+
+				// XXX can we clean up this type conversion after all?
 				expectedSamples := make([]any, len(testConfig.Samples))
 				for i, s := range testConfig.Samples {
 					expectedSamples[i] = s

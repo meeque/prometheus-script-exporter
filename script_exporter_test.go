@@ -190,6 +190,9 @@ func assertSamples(t *testing.T, samples *[]Sample, expected []any) {
 }
 
 func assertSampleAsserters(t *testing.T, samples *[]Sample, asserters []SampleAsserter) {
+	if samples == nil && asserters == nil {
+		return
+	}
 	if len(*samples) != len(asserters) {
 		t.Errorf("Expected %d samples, got %d", len(asserters), len(*samples))
 	}

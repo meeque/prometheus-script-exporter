@@ -18,39 +18,39 @@ const (
 )
 
 type OutputHandler interface {
-	Handle(metricName string, output *bytes.Buffer) (samples *[]Sample)
+	Handle(metricName string, output *bytes.Buffer) (samples *[]Sample, err error)
 }
 
 type NumberOutputHandler struct {
 }
 
-func (h NumberOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples *[]Sample) {
-	samples = &[]Sample{}
+func (h NumberOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples *[]Sample, err error) {
 	trimmedOutput := strings.TrimSpace(output.String())
 	numberOutput, err := strconv.ParseFloat(trimmedOutput, 64)
 
 	if err != nil {
-		log.Infof("ERROR: %s: failed processing script output as number: %s", metricName, err)
+		err = fmt.Errorf("%s: failed processing script output as number: %w", metricName, err)
 		return
 	}
 
-	sample := Sample{
-		Name:   "script_output",
-		Labels: map[string]string{"script": metricName},
-		Value:  numberOutput,
-	}
-	*samples = append(*samples, sample)
+	samples = &[]Sample{*NewNumberOutputSample(metricName, numberOutput)}
+	return
+}
+
+func NewNumberOutputSample(script string, value float64) (sample *Sample) {
+	sample = NewScriptSample("script_output", script, value)
 	return
 }
 
 type JsonOutputHandler struct {
 }
 
-func (h JsonOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples *[]Sample) {
+func (h JsonOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples *[]Sample, err error) {
 	var jsonOutput any
-	err := json.Unmarshal(output.Bytes(), &jsonOutput)
+	err = json.Unmarshal(output.Bytes(), &jsonOutput)
 	if err != nil {
-		log.Infof("ERROR: %s: failed processing script output as a JSON: %s", metricName, err)
+		err = fmt.Errorf("%s: failed processing script output as a JSON: %w", metricName, err)
+		return
 	}
 
 	flatJsonOutput := &FlatJsonOutput{}

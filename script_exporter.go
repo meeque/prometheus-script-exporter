@@ -138,7 +138,11 @@ func runScript(script *Script) (samples *[]Sample) {
 	}
 
 	if outputHandler != nil {
-		handlerSamples := outputHandler.Handle(script.Name, outBuffer)
+		handlerSamples, err := outputHandler.Handle(script.Name, outBuffer)
+		if err != nil {
+			log.Infof("Silently ignoring error in %T: %s", outputHandler, err)
+			return
+		}
 		*samples = append(*samples, *handlerSamples...)
 	}
 
