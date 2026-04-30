@@ -56,6 +56,7 @@ func (s *Sample) String() string {
 	slices.Sort(labelNames)
 	for labelNum, labelName := range labelNames {
 		buf.WriteString(encodeSamplePart(labelName, false))
+		buf.WriteString("=")
 		buf.WriteString(encodeSamplePart(s.Labels[labelName], true))
 		if labelNum < len(labelNames)-1 {
 			buf.WriteString(",")
@@ -199,7 +200,7 @@ func scriptRunHandler(w http.ResponseWriter, r *http.Request, config *Config) {
 
 	samples := runScripts(scripts)
 	for _, sample := range samples {
-		fmt.Fprintln(w, sample)
+		fmt.Fprintln(w, sample.String())
 	}
 }
 
