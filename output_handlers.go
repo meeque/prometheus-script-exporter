@@ -18,13 +18,14 @@ const (
 )
 
 type OutputHandler interface {
-	Handle(metricName string, output *bytes.Buffer) (samples []Sample)
+	Handle(metricName string, output *bytes.Buffer) (samples *[]Sample)
 }
 
 type NumberOutputHandler struct {
 }
 
-func (h NumberOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples []Sample) {
+func (h NumberOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples *[]Sample) {
+	samples = &[]Sample{}
 	trimmedOutput := strings.TrimSpace(output.String())
 	numberOutput, err := strconv.ParseFloat(trimmedOutput, 64)
 
@@ -38,18 +39,16 @@ func (h NumberOutputHandler) Handle(metricName string, output *bytes.Buffer) (sa
 		Labels: map[string]string{"script": metricName},
 		Value:  numberOutput,
 	}
-
-	samples = append(samples, sample)
+	*samples = append(*samples, sample)
 	return
 }
 
 type JsonOutputHandler struct {
 }
 
-func (h JsonOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples []Sample) {
+func (h JsonOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples *[]Sample) {
 	var jsonOutput any
 	err := json.Unmarshal(output.Bytes(), &jsonOutput)
-
 	if err != nil {
 		log.Infof("ERROR: %s: failed processing script output as a JSON: %s", metricName, err)
 	}
@@ -57,14 +56,14 @@ func (h JsonOutputHandler) Handle(metricName string, output *bytes.Buffer) (samp
 	flatJsonOutput := &FlatJsonOutput{}
 	flatJsonOutput.append(".", jsonOutput)
 
+	samples = &[]Sample{}
 	for name, value := range *flatJsonOutput {
-
 		sample := Sample{
 			Name:   "script_output",
 			Labels: map[string]string{"script": metricName, "output": name},
 			Value:  value,
 		}
-		samples = append(samples, sample)
+		*samples = append(*samples, sample)
 	}
 	return
 }

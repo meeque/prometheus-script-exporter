@@ -285,9 +285,8 @@ func testHandler(t *testing.T, handler OutputHandler, testConfigs []OutputHandle
 				for i, s := range testConfig.Samples {
 					expectedSamples[i] = s
 				}
-				assertSamples(t, &samples, expectedSamples)
+				assertSamples(t, samples, expectedSamples)
 			},
 		)
 	}
-
 }

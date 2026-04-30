@@ -139,7 +139,7 @@ func runScript(script *Script) (samples *[]Sample) {
 
 	if outputHandler != nil {
 		handlerSamples := outputHandler.Handle(script.Name, outBuffer)
-		*samples = append(*samples, handlerSamples...)
+		*samples = append(*samples, *handlerSamples...)
 	}
 
 	return
