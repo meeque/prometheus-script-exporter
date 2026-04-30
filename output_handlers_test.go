@@ -2,13 +2,14 @@ package main
 
 import (
 	"bytes"
+	"math"
 	"testing"
 )
 
 type OutputHandlerTestConfig struct {
 	Name    string
 	Output  string
-	Samples []string
+	Samples []Sample
 }
 
 func TestNumberOutputHandler(t *testing.T) {
@@ -37,56 +38,56 @@ func TestNumberOutputHandler(t *testing.T) {
 		{
 			Name:   "integer",
 			Output: "1337",
-			Samples: []string{
-				"script_output{script=\"integer\"} 1337",
+			Samples: []Sample{
+				*NewNumberOutputSample("integer", 1337.0),
 			},
 		},
 
 		{
 			Name:   "positive_integer",
 			Output: "+1999",
-			Samples: []string{
-				"script_output{script=\"positive_integer\"} 1999",
+			Samples: []Sample{
+				*NewNumberOutputSample("positive_integer", 1999),
 			},
 		},
 
 		{
 			Name:   "negative_integer",
 			Output: "-1999",
-			Samples: []string{
-				"script_output{script=\"negative_integer\"} -1999",
+			Samples: []Sample{
+				*NewNumberOutputSample("negative_integer", -1999),
 			},
 		},
 
 		{
 			Name:   "decimal",
 			Output: "23.42",
-			Samples: []string{
-				"script_output{script=\"decimal\"} 23.42",
+			Samples: []Sample{
+				*NewNumberOutputSample("decimal", 23.42),
 			},
 		},
 
 		{
 			Name:   "positive_decimal",
 			Output: "+2.71",
-			Samples: []string{
-				"script_output{script=\"positive_decimal\"} 2.71",
+			Samples: []Sample{
+				*NewNumberOutputSample("positive_decimal", 2.71),
 			},
 		},
 
 		{
 			Name:   "negative_decimal",
 			Output: "-3.14",
-			Samples: []string{
-				"script_output{script=\"negative_decimal\"} -3.14",
+			Samples: []Sample{
+				*NewNumberOutputSample("negative_decimal", -3.14),
 			},
 		},
 
 		{
 			Name:   "number_with_padding",
 			Output: "  69  ",
-			Samples: []string{
-				"script_output{script=\"number_with_padding\"} 69",
+			Samples: []Sample{
+				*NewNumberOutputSample("number_with_padding", 69),
 			},
 		},
 
@@ -99,48 +100,48 @@ func TestNumberOutputHandler(t *testing.T) {
 		{
 			Name:   "decimal_with_leading_zero",
 			Output: "0755",
-			Samples: []string{
-				"script_output{script=\"decimal_with_leading_zero\"} 755",
+			Samples: []Sample{
+				*NewNumberOutputSample("decimal_with_leading_zero", 755),
 			},
 		},
 
 		{
 			Name:   "not_a_number",
 			Output: "NaN",
-			Samples: []string{
-				"script_output{script=\"not_a_number\"} NaN",
+			Samples: []Sample{
+				*NewNumberOutputSample("not_a_number", math.NaN()),
 			},
 		},
 
 		{
 			Name:   "inf",
 			Output: "inf",
-			Samples: []string{
-				"script_output{script=\"inf\"} +Inf",
+			Samples: []Sample{
+				*NewNumberOutputSample("inf", math.Inf(1)),
 			},
 		},
 
 		{
 			Name:   "infinity",
 			Output: "InfInIty",
-			Samples: []string{
-				"script_output{script=\"infinity\"} +Inf",
+			Samples: []Sample{
+				*NewNumberOutputSample("infinity", math.Inf(1)),
 			},
 		},
 
 		{
 			Name:   "positive_infinity",
 			Output: "+infinity",
-			Samples: []string{
-				"script_output{script=\"positive_infinity\"} +Inf",
+			Samples: []Sample{
+				*NewNumberOutputSample("positive_infinity", math.Inf(1)),
 			},
 		},
 
 		{
 			Name:   "negative_infinity",
 			Output: "-iNfiNiTy",
-			Samples: []string{
-				"script_output{script=\"negative_infinity\"} -Inf",
+			Samples: []Sample{
+				*NewNumberOutputSample("negative_infinity", math.Inf(-1)),
 			},
 		},
 	}
@@ -162,24 +163,24 @@ func TestJsonOutputHandler(t *testing.T) {
 		{
 			Name:   "true",
 			Output: "true",
-			Samples: []string{
-				"script_output{script=\"true\",output=\".\"} 1",
+			Samples: []Sample{
+				*NewJsonOutputSample("true", ".", 1),
 			},
 		},
 
 		{
 			Name:   "false",
 			Output: "false",
-			Samples: []string{
-				"script_output{script=\"false\",output=\".\"} 0",
+			Samples: []Sample{
+				*NewJsonOutputSample("false", ".", 0),
 			},
 		},
 
 		{
 			Name:   "number",
 			Output: "1701",
-			Samples: []string{
-				"script_output{script=\"number\",output=\".\"} 1701",
+			Samples: []Sample{
+				*NewJsonOutputSample("number", ".", 1701),
 			},
 		},
 
@@ -192,32 +193,32 @@ func TestJsonOutputHandler(t *testing.T) {
 		{
 			Name:   "numeric_string",
 			Output: "\"2001\"",
-			Samples: []string{
-				"script_output{script=\"numeric_string\",output=\".\"} 2001",
+			Samples: []Sample{
+				*NewJsonOutputSample("numeric_string", ".", 2001),
 			},
 		},
 
 		{
 			Name:   "array",
 			Output: "[1, 2, 4, 8, 16]",
-			Samples: []string{
-				"script_output{script=\"array\",output=\"0\"} 1",
-				"script_output{script=\"array\",output=\"1\"} 2",
-				"script_output{script=\"array\",output=\"2\"} 4",
-				"script_output{script=\"array\",output=\"3\"} 8",
-				"script_output{script=\"array\",output=\"4\"} 16",
+			Samples: []Sample{
+				*NewJsonOutputSample("array", "0", 1),
+				*NewJsonOutputSample("array", "1", 2),
+				*NewJsonOutputSample("array", "2", 4),
+				*NewJsonOutputSample("array", "3", 8),
+				*NewJsonOutputSample("array", "4", 16),
 			},
 		},
 
 		{
 			Name:   "mixed_array",
 			Output: "[8000, null, \"42\", -0.0, \"ahoj!\", true, -3.14]",
-			Samples: []string{
-				"script_output{script=\"mixed_array\",output=\"0\"} 8000",
-				"script_output{script=\"mixed_array\",output=\"2\"} 42",
-				"script_output{script=\"mixed_array\",output=\"3\"} -0",
-				"script_output{script=\"mixed_array\",output=\"5\"} 1",
-				"script_output{script=\"mixed_array\",output=\"6\"} -3.14",
+			Samples: []Sample{
+				*NewJsonOutputSample("mixed_array", "0", 8000),
+				*NewJsonOutputSample("mixed_array", "2", 42),
+				*NewJsonOutputSample("mixed_array", "3", math.Copysign(0, -1)),
+				*NewJsonOutputSample("mixed_array", "5", 1),
+				*NewJsonOutputSample("mixed_array", "6", -3.14),
 			},
 		},
 
@@ -227,9 +228,9 @@ func TestJsonOutputHandler(t *testing.T) {
 				"\"foo\": 42," +
 				"\"bar\": 2.71828" +
 				"}",
-			Samples: []string{
-				"script_output{script=\"object\",output=\"foo\"} 42",
-				"script_output{script=\"object\",output=\"bar\"} 2.71828",
+			Samples: []Sample{
+				*NewJsonOutputSample("object", "foo", 42),
+				*NewJsonOutputSample("object", "bar", 2.71828),
 			},
 		},
 
@@ -239,8 +240,8 @@ func TestJsonOutputHandler(t *testing.T) {
 				"\"text\": \"foo\"," +
 				"\"number\": 7" +
 				"}",
-			Samples: []string{
-				"script_output{script=\"mixed_object\",output=\"number\"} 7",
+			Samples: []Sample{
+				*NewJsonOutputSample("mixed_object", "number", 7),
 			},
 		},
 
@@ -259,14 +260,14 @@ func TestJsonOutputHandler(t *testing.T) {
 				"\"empty\": []" +
 				"}" +
 				"}",
-			Samples: []string{
-				"script_output{script=\"nested_json\",output=\"number\"} 7",
-				"script_output{script=\"nested_json\",output=\"boolean\"} 1",
-				"script_output{script=\"nested_json\",output=\"array.0\"} 1",
-				"script_output{script=\"nested_json\",output=\"array.1\"} 2",
-				"script_output{script=\"nested_json\",output=\"array.2\"} 3",
-				"script_output{script=\"nested_json\",output=\"nested.boolean\"} 0",
-				"script_output{script=\"nested_json\",output=\"nested.pi\"} 3.14",
+			Samples: []Sample{
+				*NewJsonOutputSample("nested_json", "number", 7),
+				*NewJsonOutputSample("nested_json", "boolean", 1),
+				*NewJsonOutputSample("nested_json", "array.0", 1),
+				*NewJsonOutputSample("nested_json", "array.1", 2),
+				*NewJsonOutputSample("nested_json", "array.2", 3),
+				*NewJsonOutputSample("nested_json", "nested.boolean", 0),
+				*NewJsonOutputSample("nested_json", "nested.pi", 3.14),
 			},
 		},
 	}

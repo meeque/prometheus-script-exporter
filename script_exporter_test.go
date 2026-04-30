@@ -1,14 +1,10 @@
 package main
 
 import (
-	"errors"
 	"maps"
 	"math"
 	"reflect"
-	"regexp"
 	"slices"
-	"strconv"
-	"strings"
 	"testing"
 )
 
@@ -66,8 +62,8 @@ func TestRunScripts(t *testing.T) {
 			0.0,
 			0.5,
 		},
-		"script_status{script=\"success\"} 0",
-		"script_success{script=\"success\"} 1",
+		*NewScriptSample("script_status", "success", 0),
+		*NewScriptSample("script_success", "success", 1),
 
 		MinDurationAsserter{
 			"script_duration_seconds",
@@ -75,8 +71,8 @@ func TestRunScripts(t *testing.T) {
 			0.0,
 			0.5,
 		},
-		"script_status{script=\"failure\"} 1",
-		"script_success{script=\"failure\"} 0",
+		*NewScriptSample("script_status", "failure", 1),
+		*NewScriptSample("script_success", "failure", 0),
 
 		MinDurationAsserter{
 			"script_duration_seconds",
@@ -84,8 +80,8 @@ func TestRunScripts(t *testing.T) {
 			0.9,
 			1.4,
 		},
-		"script_status{script=\"timeout\"} -1",
-		"script_success{script=\"timeout\"} 0",
+		*NewScriptSample("script_status", "timeout", -1),
+		*NewScriptSample("script_success", "timeout", 0),
 
 		MinDurationAsserter{
 			"script_duration_seconds",
@@ -93,9 +89,9 @@ func TestRunScripts(t *testing.T) {
 			0.0,
 			0.5,
 		},
-		"script_status{script=\"number\"} 0",
-		"script_success{script=\"number\"} 1",
-		"script_output{script=\"number\"} 23",
+		*NewScriptSample("script_status", "number", 0),
+		*NewScriptSample("script_success", "number", 1),
+		*NewNumberOutputSample("number", 23),
 
 		MinDurationAsserter{
 			"script_duration_seconds",
@@ -103,10 +99,10 @@ func TestRunScripts(t *testing.T) {
 			0.0,
 			0.5,
 		},
-		"script_status{script=\"json\"} 0",
-		"script_success{script=\"json\"} 1",
-		"script_output{script=\"json\",output=\"foo\"} 42",
-		"script_output{script=\"json\",output=\"bar\"} 2.71828",
+		*NewScriptSample("script_status", "json", 0),
+		*NewScriptSample("script_success", "json", 1),
+		*NewJsonOutputSample("json", "foo", 42),
+		*NewJsonOutputSample("json", "bar", 2.71828),
 	}
 
 	samples := runScripts(config.Scripts)
@@ -175,12 +171,6 @@ func assertSamples(t *testing.T, samples *[]Sample, expected []any) {
 			asserters = append(asserters, exp)
 		case Sample:
 			asserters = append(asserters, ExactMatchAsserter{&exp})
-		case string:
-			if s, err := parseSample(exp); err == nil {
-				asserters = append(asserters, ExactMatchAsserter{s})
-			} else {
-				t.Errorf("Failed to parse expected sample: %s", exp)
-			}
 		default:
 			t.Logf("Unsupported type %T of expected Sample.", exp)
 		}
@@ -214,45 +204,4 @@ func assertSampleAsserters(t *testing.T, samples *[]Sample, asserters []SampleAs
 		t.Errorf("Unexpected sample %s was not matched by any asserter.", sample.String())
 	}
 
-}
-
-func parseSample(s string) (sample *Sample, err error) {
-	samplePattern := regexp.MustCompile(`^([-_a-zA-Z0-9]+)\s*[{]([^]]+)[}]\s+(\S+)$`)
-	sampleParts := samplePattern.FindStringSubmatch(s)
-	if sampleParts == nil {
-		return nil, errors.New("Sample '" + s + "' does not match expected pattern " + samplePattern.String() + ".")
-	}
-
-	name := sampleParts[1]
-	labelsPart := sampleParts[2]
-	valuePart := sampleParts[3]
-
-	value, err := strconv.ParseFloat(valuePart, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	sample = &Sample{
-		Name:   name,
-		Labels: map[string]string{},
-		Value:  value,
-	}
-
-	labels := strings.Split(labelsPart, ",")
-	for _, label := range labels {
-		labelParts := strings.SplitN(label, "=", 2)
-		if len(labelParts) < 2 {
-			return nil, errors.New("Sample contains label '" + label + "', which does not match expected form 'name=\"value\"'.")
-		}
-		labelName := strings.TrimSpace(labelParts[0])
-		labelValue := strings.TrimSpace(labelParts[1])
-
-		quotedStringPattern := regexp.MustCompile(`^"(.*)"$`)
-		if q := quotedStringPattern.FindStringSubmatch(labelValue); q != nil {
-			labelValue = q[1]
-		}
-		sample.Labels[labelName] = labelValue
-	}
-
-	return
 }
