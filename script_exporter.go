@@ -49,6 +49,19 @@ type Sample struct {
 	Value  float64
 }
 
+func NewSample(name string, labels map[string]string, value float64) (sample *Sample) {
+	return &Sample{
+		Name:   name,
+		Labels: labels,
+		Value:  value,
+	}
+}
+
+func NewScriptSample(name string, script string, value float64) (sample *Sample) {
+	labels := map[string]string{"script": script}
+	return NewSample(name, labels, value)
+}
+
 func (s *Sample) String() string {
 	buf := bytes.NewBufferString(s.Name)
 	buf.WriteString("{")
@@ -97,8 +110,7 @@ func executeScript(script *string, timeout int64, captureOutput bool) (stdout *b
 	return
 }
 
-func runScript(script *Script) (samples []Sample) {
-
+func runScript(script *Script) (samples *[]Sample) {
 	success := 0
 	status := -1
 	outputHandler := outputHandlers[script.Output]
@@ -119,46 +131,35 @@ func runScript(script *Script) (samples []Sample) {
 		}
 	}
 
-	samples = []Sample{
-		{
-			Name:   "script_duration_seconds",
-			Labels: map[string]string{"script": script.Name},
-			Value:  duration,
-		},
-		{
-			Name:   "script_status",
-			Labels: map[string]string{"script": script.Name},
-			Value:  float64(status),
-		},
-		{
-			Name:   "script_success",
-			Labels: map[string]string{"script": script.Name},
-			Value:  float64(success),
-		},
+	samples = &[]Sample{
+		*NewScriptSample("script_duration_seconds", script.Name, duration),
+		*NewScriptSample("script_status", script.Name, float64(status)),
+		*NewScriptSample("script_success", script.Name, float64(success)),
 	}
 
 	if outputHandler != nil {
 		handlerSamples := outputHandler.Handle(script.Name, outBuffer)
-		samples = append(samples, handlerSamples...)
+		*samples = append(*samples, handlerSamples...)
 	}
+
 	return
 }
 
-func runScripts(scripts []*Script) (samples []Sample) {
+func runScripts(scripts []*Script) (samples *[]Sample) {
 
 	ch := make(chan []Sample, len(scripts))
 
 	for _, script := range scripts {
 		go func() {
-			ch <- runScript(script)
+			ch <- *runScript(script)
 		}()
 	}
 
+	samples = &[]Sample{}
 	for range scripts {
-		samples = append(samples, <-ch...)
+		*samples = append(*samples, <-ch...)
 	}
-
-	return samples
+	return
 }
 
 func scriptFilter(scripts []*Script, name, pattern string) (filteredScripts []*Script, err error) {
@@ -199,7 +200,7 @@ func scriptRunHandler(w http.ResponseWriter, r *http.Request, config *Config) {
 	}
 
 	samples := runScripts(scripts)
-	for _, sample := range samples {
+	for _, sample := range *samples {
 		fmt.Fprintln(w, sample.String())
 	}
 }

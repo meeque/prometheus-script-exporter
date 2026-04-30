@@ -166,7 +166,7 @@ func TestScriptFilter(t *testing.T) {
 	})
 }
 
-func assertSamples(t *testing.T, samples []Sample, expected []any) {
+func assertSamples(t *testing.T, samples *[]Sample, expected []any) {
 	asserters := []SampleAsserter{}
 
 	for _, exp := range expected {
@@ -189,17 +189,17 @@ func assertSamples(t *testing.T, samples []Sample, expected []any) {
 	assertSampleAsserters(t, samples, asserters)
 }
 
-func assertSampleAsserters(t *testing.T, samples []Sample, asserters []SampleAsserter) {
-	if len(samples) != len(asserters) {
-		t.Errorf("Expected %d samples, got %d", len(asserters), len(samples))
+func assertSampleAsserters(t *testing.T, samples *[]Sample, asserters []SampleAsserter) {
+	if len(*samples) != len(asserters) {
+		t.Errorf("Expected %d samples, got %d", len(asserters), len(*samples))
 	}
 
 	for _, asserter := range asserters {
 		asserterMatchedASample := false
-		for i, sample := range samples {
+		for i, sample := range *samples {
 			if asserter.Assert(t, &sample) {
 				asserterMatchedASample = true
-				samples = slices.Delete(samples, i, i+1)
+				*samples = slices.Delete(*samples, i, i+1)
 				break
 			}
 		}
@@ -207,7 +207,7 @@ func assertSampleAsserters(t *testing.T, samples []Sample, asserters []SampleAss
 			t.Errorf("Asserter %s did not match any samples.", asserter)
 		}
 	}
-	for _, sample := range samples {
+	for _, sample := range *samples {
 		t.Errorf("Unexpected sample %s was not matched by any asserter.", sample.String())
 	}
 
