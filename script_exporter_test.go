@@ -1,10 +1,10 @@
 package main
 
 import (
-	"cmp"
 	"errors"
 	"maps"
 	"math"
+	"reflect"
 	"regexp"
 	"slices"
 	"strconv"
@@ -19,39 +19,32 @@ func (s1 Sample) Equal(s2 Sample) bool {
 }
 
 type SampleAsserter interface {
-	Assert(t *testing.T, sample *Sample)
-	Placeholder() string
+	Assert(t *testing.T, sample *Sample) (match bool)
 }
 
 type ExactMatchAsserter struct {
 	Sample *Sample
 }
 
-func (a ExactMatchAsserter) Assert(t *testing.T, sample *Sample) {
-	if !a.Sample.Equal(*sample) {
-		t.Errorf("Expected sample %s, got %s", a.Sample, sample)
-	}
-}
-
-func (a ExactMatchAsserter) Placeholder() string {
-	return a.Sample.String()
+func (a ExactMatchAsserter) Assert(t *testing.T, sample *Sample) (match bool) {
+	return a.Sample.Equal(*sample)
 }
 
 type MinDurationAsserter struct {
-	placeholder     string
-	SamplePattern   regexp.Regexp
-	DurationPattern regexp.Regexp
-	Min             float64
+	Name   string
+	Labels map[string]string
+	Min    float64
 }
 
-func (a MinDurationAsserter) Assert(t *testing.T, sample *Sample) {
-	if sample.Value < a.Min {
-		t.Errorf("Expected sampled duration to be at least %f, but got %f", a.Min, sample.Value)
+func (a MinDurationAsserter) Assert(t *testing.T, sample *Sample) (match bool) {
+	match = a.Name == sample.Name &&
+		reflect.DeepEqual(a.Labels, sample.Labels)
+	if match {
+		if sample.Value < a.Min {
+			t.Errorf("Expected sampled duration to be at least %f, but got %f", a.Min, sample.Value)
+		}
 	}
-}
-
-func (a MinDurationAsserter) Placeholder() string {
-	return a.placeholder
+	return
 }
 
 var config = &Config{
@@ -65,40 +58,34 @@ var config = &Config{
 }
 
 func TestRunScripts(t *testing.T) {
-	valueRegexp := regexp.MustCompile(`[^\s]+$`)
-
 	expectedSamples := []any{
 		MinDurationAsserter{
-			"script_duration_seconds{script=\"success\"",
-			*regexp.MustCompile(`^script_duration_seconds[{].*script="success".*[}]\s+`),
-			*valueRegexp,
+			"script_duration_seconds",
+			map[string]string{"script": "success"},
 			0.0,
 		},
 		"script_status{script=\"success\"} 0",
 		"script_success{script=\"success\"} 1",
 
 		MinDurationAsserter{
-			"script_duration_seconds{script=\"failure\"",
-			*regexp.MustCompile(`^script_duration_seconds[{].*script="failure".*[}]\s+`),
-			*valueRegexp,
+			"script_duration_seconds",
+			map[string]string{"script": "failure"},
 			0.0,
 		},
 		"script_status{script=\"failure\"} 1",
 		"script_success{script=\"failure\"} 0",
 
 		MinDurationAsserter{
-			"script_duration_seconds{script=\"timeout\"",
-			*regexp.MustCompile(`^script_duration_seconds[{].*script="timeout".*[}]\s+`),
-			*valueRegexp,
+			"script_duration_seconds",
+			map[string]string{"script": "timeout"},
 			0.9,
 		},
 		"script_status{script=\"timeout\"} -1",
 		"script_success{script=\"timeout\"} 0",
 
 		MinDurationAsserter{
-			"script_duration_seconds{script=\"number\"",
-			*regexp.MustCompile(`^script_duration_seconds[{].*script="number".*[}]\s+`),
-			*valueRegexp,
+			"script_duration_seconds",
+			map[string]string{"script": "number"},
 			0.0,
 		},
 		"script_status{script=\"number\"} 0",
@@ -106,9 +93,8 @@ func TestRunScripts(t *testing.T) {
 		"script_output{script=\"number\"} 23",
 
 		MinDurationAsserter{
-			"script_duration_seconds{script=\"json\"",
-			*regexp.MustCompile(`^script_duration_seconds[{].*script="json".*[}]\s+`),
-			*valueRegexp,
+			"script_duration_seconds",
+			map[string]string{"script": "json"},
 			0.0,
 		},
 		"script_status{script=\"json\"} 0",
@@ -174,15 +160,7 @@ func TestScriptFilter(t *testing.T) {
 	})
 }
 
-func compareSamples(a, b Sample) int {
-	return cmp.Compare(a.String(), b.String())
-}
-
-func compareSampleAsserters(a, b SampleAsserter) int {
-	return cmp.Compare(a.Placeholder(), b.Placeholder())
-}
-
-func assertSamples(t *testing.T, actual []Sample, expected []any) {
+func assertSamples(t *testing.T, samples []Sample, expected []any) {
 	asserters := []SampleAsserter{}
 
 	for _, exp := range expected {
@@ -202,20 +180,31 @@ func assertSamples(t *testing.T, actual []Sample, expected []any) {
 		}
 	}
 
-	assertSampleAsserters(t, actual, asserters)
+	assertSampleAsserters(t, samples, asserters)
 }
 
-func assertSampleAsserters(t *testing.T, actual []Sample, asserters []SampleAsserter) {
-	if len(actual) != len(asserters) {
-		t.Errorf("Expected %d samples, got %d", len(asserters), len(actual))
+func assertSampleAsserters(t *testing.T, samples []Sample, asserters []SampleAsserter) {
+	if len(samples) != len(asserters) {
+		t.Errorf("Expected %d samples, got %d", len(asserters), len(samples))
 	}
 
-	slices.SortFunc(actual, compareSamples)
-	slices.SortFunc(asserters, compareSampleAsserters)
-
-	for i, asserter := range asserters {
-		asserter.Assert(t, &actual[i])
+	for _, asserter := range asserters {
+		asserterMatchedASample := false
+		for i, sample := range samples {
+			if asserter.Assert(t, &sample) {
+				asserterMatchedASample = true
+				samples = slices.Delete(samples, i, i+1)
+				break
+			}
+		}
+		if !asserterMatchedASample {
+			t.Errorf("Asserter %s did not match any samples.", asserter)
+		}
 	}
+	for _, sample := range samples {
+		t.Errorf("Unexpected sample %s was not matched by any asserter.", sample.String())
+	}
+
 }
 
 func parseSample(s string) (sample *Sample, err error) {
