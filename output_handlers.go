@@ -57,14 +57,15 @@ func (h JsonOutputHandler) Handle(metricName string, output *bytes.Buffer) (samp
 	flatJsonOutput.append(".", jsonOutput)
 
 	samples = &[]Sample{}
-	for name, value := range *flatJsonOutput {
-		sample := Sample{
-			Name:   "script_output",
-			Labels: map[string]string{"script": metricName, "output": name},
-			Value:  value,
-		}
-		*samples = append(*samples, sample)
+	for outputName, value := range *flatJsonOutput {
+		*samples = append(*samples, *NewJsonOutputSample(metricName, outputName, value))
 	}
+	return
+}
+
+func NewJsonOutputSample(script string, output string, value float64) (sample *Sample) {
+	sample = NewScriptSample("script_output", script, value)
+	sample.Labels["output"] = output
 	return
 }
 
