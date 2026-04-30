@@ -34,14 +34,15 @@ type MinDurationAsserter struct {
 	Name   string
 	Labels map[string]string
 	Min    float64
+	Max    float64
 }
 
 func (a MinDurationAsserter) Assert(t *testing.T, sample *Sample) (match bool) {
 	match = a.Name == sample.Name &&
 		reflect.DeepEqual(a.Labels, sample.Labels)
 	if match {
-		if sample.Value < a.Min {
-			t.Errorf("Expected sampled duration to be at least %f, but got %f", a.Min, sample.Value)
+		if sample.Value < a.Min || sample.Value > a.Max {
+			t.Errorf("Expected sampled duration to be between %f and %f, but got %f", a.Min, a.Max, sample.Value)
 		}
 	}
 	return
@@ -63,6 +64,7 @@ func TestRunScripts(t *testing.T) {
 			"script_duration_seconds",
 			map[string]string{"script": "success"},
 			0.0,
+			0.5,
 		},
 		"script_status{script=\"success\"} 0",
 		"script_success{script=\"success\"} 1",
@@ -71,6 +73,7 @@ func TestRunScripts(t *testing.T) {
 			"script_duration_seconds",
 			map[string]string{"script": "failure"},
 			0.0,
+			0.5,
 		},
 		"script_status{script=\"failure\"} 1",
 		"script_success{script=\"failure\"} 0",
@@ -79,6 +82,7 @@ func TestRunScripts(t *testing.T) {
 			"script_duration_seconds",
 			map[string]string{"script": "timeout"},
 			0.9,
+			1.4,
 		},
 		"script_status{script=\"timeout\"} -1",
 		"script_success{script=\"timeout\"} 0",
@@ -87,6 +91,7 @@ func TestRunScripts(t *testing.T) {
 			"script_duration_seconds",
 			map[string]string{"script": "number"},
 			0.0,
+			0.5,
 		},
 		"script_status{script=\"number\"} 0",
 		"script_success{script=\"number\"} 1",
@@ -96,6 +101,7 @@ func TestRunScripts(t *testing.T) {
 			"script_duration_seconds",
 			map[string]string{"script": "json"},
 			0.0,
+			0.5,
 		},
 		"script_status{script=\"json\"} 0",
 		"script_success{script=\"json\"} 1",
