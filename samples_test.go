@@ -39,15 +39,13 @@ func (s1 Sample) Equal(s2 Sample) bool {
 		(s1.Value == s2.Value || (math.IsNaN(s1.Value) && math.IsNaN(s2.Value)))
 }
 
-type AssertSamples func(actual, expected Sample) (done bool)
+type AssertSamples func(t *testing.T, actual, expected Sample) (done bool)
 
-func NewAssertSamplesEqual(t *testing.T) AssertSamples {
-	return func(actual, expected Sample) (done bool) {
-		if !expected.Equal(actual) {
-			t.Errorf("Expected Sample '%s' but got '%s'", expected.String(), actual.String())
-		}
-		return true
+func AssertSamplesEqual(t *testing.T, actual, expected Sample) (done bool) {
+	if !expected.Equal(actual) {
+		t.Errorf("Expected Sample '%s' but got '%s'", expected.String(), actual.String())
 	}
+	return true
 }
 
 func sortSamples(samples []Sample) {
@@ -60,7 +58,7 @@ func sortSamples(samples []Sample) {
 }
 
 func assertSamplesEqual(t *testing.T, actuals []Sample, expecteds []Sample) {
-	assertSamples(t, []AssertSamples{ NewAssertSamplesEqual(t) }, actuals, expecteds)
+	assertSamples(t, []AssertSamples{AssertSamplesEqual}, actuals, expecteds)
 }
 
 func assertSamples(t *testing.T, asserters []AssertSamples, actuals []Sample, expecteds []Sample) {
@@ -75,7 +73,7 @@ func assertSamples(t *testing.T, asserters []AssertSamples, actuals []Sample, ex
 		expected := expecteds[i]
 
 		for _, asserter := range asserters {
-			if asserter(actual, expected) {
+			if asserter(t, actual, expected) {
 				break
 			}
 		}

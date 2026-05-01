@@ -53,7 +53,7 @@ func (s *Sample) StringNameAndLabels() string {
 func encodeSamplePart(part string, force bool) string {
 	if force || strings.ContainsAny(part, "{},=\n\"\\") {
 		quotedPart := ""
-		for _, r  := range part  {
+		for _, r := range part {
 			switch r {
 			case '\n':
 				quotedPart += `\n`
