@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-var config = &Config{
+var scriptExporterTestConfig = &Config{
 	Scripts: []*Script{
 		{"success", "exit 0", 15, ""},
 		{"failure", "exit 1", 15, ""},
@@ -65,14 +65,14 @@ func TestRunScripts(t *testing.T) {
 		*NewJsonOutputSample("json", "bar", 2.71828),
 	}
 
-	samples := runScripts(config.Scripts)
+	samples := runScripts(scriptExporterTestConfig.Scripts)
 
 	assertSamples(t, samples, &expectedSamples)
 }
 
 func TestScriptFilter(t *testing.T) {
 	t.Run("RequiredParameters", func(t *testing.T) {
-		_, err := scriptFilter(config.Scripts, "", "")
+		_, err := scriptFilter(scriptExporterTestConfig.Scripts, "", "")
 
 		if err.Error() != "`name` or `pattern` required" {
 			t.Errorf("Expected failure when supplying no parameters")
@@ -80,41 +80,41 @@ func TestScriptFilter(t *testing.T) {
 	})
 
 	t.Run("NameMatch", func(t *testing.T) {
-		scripts, err := scriptFilter(config.Scripts, "success", "")
+		scripts, err := scriptFilter(scriptExporterTestConfig.Scripts, "success", "")
 
 		if err != nil {
 			t.Errorf("Unexpected: %s", err.Error())
 		}
 
-		if len(scripts) != 1 || scripts[0] != config.Scripts[0] {
+		if len(scripts) != 1 || scripts[0] != scriptExporterTestConfig.Scripts[0] {
 			t.Errorf("Expected script not found")
 		}
 	})
 
 	t.Run("PatternMatch", func(t *testing.T) {
-		scripts, err := scriptFilter(config.Scripts, "", "fail.*")
+		scripts, err := scriptFilter(scriptExporterTestConfig.Scripts, "", "fail.*")
 
 		if err != nil {
 			t.Errorf("Unexpected: %s", err.Error())
 		}
 
-		if len(scripts) != 1 || scripts[0] != config.Scripts[1] {
+		if len(scripts) != 1 || scripts[0] != scriptExporterTestConfig.Scripts[1] {
 			t.Errorf("Expected script not found")
 		}
 	})
 
 	t.Run("AllMatch", func(t *testing.T) {
-		scripts, err := scriptFilter(config.Scripts, "success", ".*")
+		scripts, err := scriptFilter(scriptExporterTestConfig.Scripts, "success", ".*")
 
 		if err != nil {
 			t.Errorf("Unexpected: %s", err.Error())
 		}
 
-		if len(scripts) != len(config.Scripts) {
-			t.Fatalf("Expected %d scripts, received %d", len(config.Scripts), len(scripts))
+		if len(scripts) != len(scriptExporterTestConfig.Scripts) {
+			t.Fatalf("Expected %d scripts, received %d", len(scriptExporterTestConfig.Scripts), len(scripts))
 		}
 
-		for i, script := range config.Scripts {
+		for i, script := range scriptExporterTestConfig.Scripts {
 			if scripts[i] != script {
 				t.Fatalf("Expected script not found")
 			}
