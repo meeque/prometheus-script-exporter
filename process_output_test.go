@@ -282,12 +282,7 @@ func testProcessOutput(t *testing.T, processor ProcessOutput, testConfigs []Proc
 				if err != nil && testConfig.Samples == nil {
 					return
 				}
-
-				expectedSamples := make([]any, len(testConfig.Samples))
-				for i, s := range testConfig.Samples {
-					expectedSamples[i] = s
-				}
-				assertSamples(t, samples, &expectedSamples)
+				assertSamplesEqual(t, *samples, testConfig.Samples)
 			},
 		)
 	}
