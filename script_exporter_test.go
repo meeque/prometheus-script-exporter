@@ -107,7 +107,7 @@ func TestRunScripts(t *testing.T) {
 
 	samples := runScripts(config.Scripts)
 
-	assertSamples(t, samples, expectedSamples)
+	assertSamples(t, samples, &expectedSamples)
 }
 
 func TestScriptFilter(t *testing.T) {
@@ -162,10 +162,10 @@ func TestScriptFilter(t *testing.T) {
 	})
 }
 
-func assertSamples(t *testing.T, samples *[]Sample, expected []any) {
+func assertSamples(t *testing.T, samples *[]Sample, expected *[]any) {
 	asserters := []SampleAsserter{}
 
-	for _, exp := range expected {
+	for _, exp := range *expected {
 		switch exp := exp.(type) {
 		case SampleAsserter:
 			asserters = append(asserters, exp)

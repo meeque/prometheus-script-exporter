@@ -283,12 +283,11 @@ func testProcessOutput(t *testing.T, processor ProcessOutput, testConfigs []Proc
 					return
 				}
 
-				// XXX can we clean up this type conversion after all?
 				expectedSamples := make([]any, len(testConfig.Samples))
 				for i, s := range testConfig.Samples {
 					expectedSamples[i] = s
 				}
-				assertSamples(t, samples, expectedSamples)
+				assertSamples(t, samples, &expectedSamples)
 			},
 		)
 	}
