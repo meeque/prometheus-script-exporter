@@ -8,6 +8,33 @@ import (
 	"testing"
 )
 
+func TestSampleString(t *testing.T) {
+
+	testSamplesAndExpectedStrings := map[*Sample]string{
+		NewSample("foo", map[string]string{}, 256e-2):  "foo{} 2.56",
+		NewSample("bar", map[string]string{}, -0.7): "bar{} -0.7",
+
+		NewSample("labeled", map[string]string{"xxx": "yyy", "foo": "bar"}, 256):
+			`labeled{foo="bar",xxx="yyy"} 256`,
+		NewSample("labeled_with_escaped_value", map[string]string{"foo": "quote\"backslash\\newline\n"}, math.NaN()):
+			"labeled_with_escaped_value{foo=\"quote\\\"backslash\\\\newline\\n\"} NaN",
+		NewSample("labeled_with_escaped_name", map[string]string{"\"\\\n": "bar"}, math.Inf(1)):
+			"labeled_with_escaped_name{\"\\\"\\\\\\n\"=\"bar\"} +Inf",
+		NewSample("labeled_with_escaped_name", map[string]string{"{a=b},c": "foo"}, math.Inf(-1)):
+			"labeled_with_escaped_name{\"{a=b},c\"=\"foo\"} -Inf",
+
+		NewScriptSample("sample_name", "script_name", -0):
+			`sample_name{script="script_name"} 0`,
+	}
+
+	for testSample, expectedString := range testSamplesAndExpectedStrings  {
+		sampleString  := testSample.String()
+		if sampleString!= expectedString  {
+			t.Errorf("Expected Sample.String() to be '%s' but got '%s'", expectedString, sampleString)
+		}
+	}
+}
+
 func (s1 Sample) Equal(s2 Sample) bool {
 	return s1.Name == s2.Name &&
 		maps.Equal(s1.Labels, s2.Labels) &&

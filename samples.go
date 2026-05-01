@@ -46,11 +46,21 @@ func (s *Sample) String() string {
 }
 
 func encodeSamplePart(part string, force bool) string {
-	if force || strings.ContainsAny(part, "\n\"\\") {
-		part = strings.ReplaceAll(part, "\n", "\\n")
-		part = strings.ReplaceAll(part, "\"", "\\\"")
-		part = strings.ReplaceAll(part, "\\", "\\\\")
-		return "\"" + part + "\""
+	if force || strings.ContainsAny(part, "{},=\n\"\\") {
+		quotedPart := ""
+		for _, r  := range part  {
+			switch r {
+			case '\n':
+				quotedPart += `\n`
+			case '"':
+				quotedPart += `\"`
+			case '\\':
+				quotedPart += `\\`
+			default:
+				quotedPart += string(r)
+			}
+		}
+		return `"` + quotedPart + `"`
 	}
 	return part
 }
