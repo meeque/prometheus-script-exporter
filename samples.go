@@ -28,20 +28,25 @@ func NewScriptSample(name string, script string, value float64) (sample *Sample)
 }
 
 func (s *Sample) String() string {
+	return s.StringNameAndLabels() +
+		" " +
+		strconv.FormatFloat(s.Value, 'f', -1, 64)
+}
+
+func (s *Sample) StringNameAndLabels() string {
 	buf := bytes.NewBufferString(s.Name)
-	buf.WriteString("{")
+	buf.WriteRune('{')
 	labelNames := slices.Collect(maps.Keys(s.Labels))
 	slices.Sort(labelNames)
 	for labelNum, labelName := range labelNames {
 		buf.WriteString(encodeSamplePart(labelName, false))
-		buf.WriteString("=")
+		buf.WriteRune('=')
 		buf.WriteString(encodeSamplePart(s.Labels[labelName], true))
 		if labelNum < len(labelNames)-1 {
-			buf.WriteString(",")
+			buf.WriteRune(',')
 		}
 	}
-	buf.WriteString("} ")
-	buf.WriteString(strconv.FormatFloat(s.Value, 'f', -1, 64))
+	buf.WriteRune('}')
 	return buf.String()
 }
 
