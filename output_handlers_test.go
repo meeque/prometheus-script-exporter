@@ -6,16 +6,15 @@ import (
 	"testing"
 )
 
-type OutputHandlerTestConfig struct {
+type ProcessOutputTestConfig struct {
 	Name    string
 	Output  string
 	Samples []Sample
 }
 
-func TestNumberOutputHandler(t *testing.T) {
-	handler := NumberOutputHandler{}
+func TestProcessNumberOutput(t *testing.T) {
 
-	testConfigs := []OutputHandlerTestConfig{
+	testConfigs := []ProcessOutputTestConfig{
 
 		{
 			Name:    "text",
@@ -146,13 +145,12 @@ func TestNumberOutputHandler(t *testing.T) {
 		},
 	}
 
-	testHandler(t, handler, testConfigs)
+	testProcessOutput(t, ProcessNumberOutput, testConfigs)
 }
 
-func TestJsonOutputHandler(t *testing.T) {
-	handler := JsonOutputHandler{}
+func TestProcessJsonOutput(t *testing.T) {
 
-	testConfigs := []OutputHandlerTestConfig{
+	testConfigs := []ProcessOutputTestConfig{
 
 		{
 			Name:    "invalid_json",
@@ -272,16 +270,15 @@ func TestJsonOutputHandler(t *testing.T) {
 		},
 	}
 
-	testHandler(t, handler, testConfigs)
+	testProcessOutput(t, ProcessJsonOutput, testConfigs)
 }
 
-func testHandler(t *testing.T, handler OutputHandler, testConfigs []OutputHandlerTestConfig) {
-
+func testProcessOutput(t *testing.T, processor ProcessOutput, testConfigs []ProcessOutputTestConfig) {
 	for _, testConfig := range testConfigs {
 		t.Run(
 			"with_"+testConfig.Name,
 			func(t *testing.T) {
-				samples, err := handler.Handle(testConfig.Name, bytes.NewBufferString(testConfig.Output))
+				samples, err := processor(testConfig.Name, bytes.NewBufferString(testConfig.Output))
 				if err != nil && testConfig.Samples == nil {
 					return
 				}

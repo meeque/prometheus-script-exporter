@@ -10,21 +10,16 @@ import (
 	"github.com/prometheus/common/log"
 )
 
-type OutputType string
-
 const (
 	Number OutputType = "number"
 	Json   OutputType = "json"
 )
 
-type OutputHandler interface {
-	Handle(metricName string, output *bytes.Buffer) (samples *[]Sample, err error)
-}
+type OutputType string
 
-type NumberOutputHandler struct {
-}
+type ProcessOutput func(metricName string, output *bytes.Buffer) (samples *[]Sample, err error)
 
-func (h NumberOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples *[]Sample, err error) {
+func ProcessNumberOutput(metricName string, output *bytes.Buffer) (samples *[]Sample, err error) {
 	trimmedOutput := strings.TrimSpace(output.String())
 	numberOutput, err := strconv.ParseFloat(trimmedOutput, 64)
 
@@ -42,10 +37,7 @@ func NewNumberOutputSample(script string, value float64) (sample *Sample) {
 	return
 }
 
-type JsonOutputHandler struct {
-}
-
-func (h JsonOutputHandler) Handle(metricName string, output *bytes.Buffer) (samples *[]Sample, err error) {
+func ProcessJsonOutput(metricName string, output *bytes.Buffer) (samples *[]Sample, err error) {
 	var jsonOutput any
 	err = json.Unmarshal(output.Bytes(), &jsonOutput)
 	if err != nil {
@@ -110,7 +102,7 @@ func appendToPath(basePath string, segment string) (path string) {
 	return fmt.Sprintf("%s.%s", basePath, segment)
 }
 
-var outputHandlers = map[OutputType]OutputHandler{
-	Number: &NumberOutputHandler{},
-	Json:   &JsonOutputHandler{},
+var processOutputByType = map[OutputType]ProcessOutput{
+	Number: ProcessNumberOutput,
+	Json:   ProcessJsonOutput,
 }

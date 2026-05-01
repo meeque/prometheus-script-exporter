@@ -113,10 +113,10 @@ func executeScript(script *string, timeout int64, captureOutput bool) (stdout *b
 func runScript(script *Script) (samples *[]Sample) {
 	success := 0
 	status := -1
-	outputHandler := outputHandlers[script.Output]
+	processOutput := processOutputByType[script.Output]
 
 	start := time.Now()
-	outBuffer, err := executeScript(&script.Content, script.Timeout, outputHandler != nil)
+	outBuffer, err := executeScript(&script.Content, script.Timeout, processOutput != nil)
 	duration := time.Since(start).Seconds()
 
 	if err == nil {
@@ -137,13 +137,13 @@ func runScript(script *Script) (samples *[]Sample) {
 		*NewScriptSample("script_success", script.Name, float64(success)),
 	}
 
-	if outputHandler != nil {
-		handlerSamples, err := outputHandler.Handle(script.Name, outBuffer)
+	if processOutput != nil {
+		outputSamples, err := processOutput(script.Name, outBuffer)
 		if err != nil {
-			log.Infof("Silently ignoring error in %T: %s", outputHandler, err)
+			log.Infof("Silently ignoring error in %T: %s", processOutput, err)
 			return
 		}
-		*samples = append(*samples, *handlerSamples...)
+		*samples = append(*samples, *outputSamples...)
 	}
 
 	return
