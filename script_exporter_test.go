@@ -16,49 +16,54 @@ var scriptExporterTestConfig = &Config{
 
 func TestRunScripts(t *testing.T) {
 	expectedSamples := []any{
-		MinDurationAsserter{
+		NewMatchSampleAndAssertValueRange(
+			t,
 			"script_duration_seconds",
-			map[string]string{"script": "success"},
+			&map[string]string{"script": "success"},
 			0.0,
 			0.5,
-		},
+		),
 		*NewScriptSample("script_status", "success", 0),
 		*NewScriptSample("script_success", "success", 1),
 
-		MinDurationAsserter{
+		NewMatchSampleAndAssertValueRange(
+			t,
 			"script_duration_seconds",
-			map[string]string{"script": "failure"},
+			&map[string]string{"script": "failure"},
 			0.0,
 			0.5,
-		},
+		),
 		*NewScriptSample("script_status", "failure", 1),
 		*NewScriptSample("script_success", "failure", 0),
 
-		MinDurationAsserter{
+		NewMatchSampleAndAssertValueRange(
+			t,
 			"script_duration_seconds",
-			map[string]string{"script": "timeout"},
+			&map[string]string{"script": "timeout"},
 			0.9,
 			1.4,
-		},
+		),
 		*NewScriptSample("script_status", "timeout", -1),
 		*NewScriptSample("script_success", "timeout", 0),
 
-		MinDurationAsserter{
+		NewMatchSampleAndAssertValueRange(
+			t,
 			"script_duration_seconds",
-			map[string]string{"script": "number"},
+			&map[string]string{"script": "number"},
 			0.0,
 			0.5,
-		},
+		),
 		*NewScriptSample("script_status", "number", 0),
 		*NewScriptSample("script_success", "number", 1),
 		*NewNumberOutputSample("number", 23),
 
-		MinDurationAsserter{
+		NewMatchSampleAndAssertValueRange(
+			t,
 			"script_duration_seconds",
-			map[string]string{"script": "json"},
+			&map[string]string{"script": "json"},
 			0.0,
 			0.5,
-		},
+		),
 		*NewScriptSample("script_status", "json", 0),
 		*NewScriptSample("script_success", "json", 1),
 		*NewJsonOutputSample("json", "foo", 42),
