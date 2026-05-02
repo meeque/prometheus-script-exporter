@@ -4,56 +4,55 @@ import (
 	"testing"
 )
 
-var config = &Config{
+var scriptExporterTestConfig = &Config{
 	Scripts: []*Script{
-		{"success", "exit 0", 1},
-		{"failure", "exit 1", 1},
-		{"timeout", "sleep 5", 2},
+		{"success", "exit 0", 15, ""},
+		{"failure", "exit 1", 15, ""},
+		{"timeout", "sleep 3", 1, ""},
+		{"number", "echo 23", 15, "number"},
+		{"json", "echo '{\"foo\": 42, \"bar\": 2.71828}'", 15, "json"},
 	},
 }
 
 func TestRunScripts(t *testing.T) {
-	measurements := runScripts(config.Scripts)
-
-	expectedResults := map[string]struct {
-		success     int
-		status      int
-		minDuration float64
-	}{
-		"success": {1, 0, 0},
-		"failure": {0, 1, 0},
-		"timeout": {0, -1, 2},
+	asserters := []AssertSamples{
+		AssertDurationSamples,
+		AssertSamplesEqual,
 	}
 
-	if len(measurements) != len(config.Scripts) {
-		t.Errorf("Expected %d measurements, received %d", len(config.Scripts), len(measurements))
+	expectedSamples := []Sample{
+		*NewScriptSample("script_duration_seconds", "success", 0),
+		*NewScriptSample("script_status", "success", 0),
+		*NewScriptSample("script_success", "success", 1),
+
+		*NewScriptSample("script_duration_seconds", "failure", 0),
+		*NewScriptSample("script_status", "failure", 1),
+		*NewScriptSample("script_success", "failure", 0),
+
+		*NewScriptSample("script_duration_seconds", "timeout", 0),
+		*NewScriptSample("script_status", "timeout", -1),
+		*NewScriptSample("script_success", "timeout", 0),
+
+		*NewScriptSample("script_duration_seconds", "number", 0),
+		*NewScriptSample("script_status", "number", 0),
+		*NewScriptSample("script_success", "number", 1),
+		*NewNumberOutputSample("number", 23),
+
+		*NewScriptSample("script_duration_seconds", "json", 0),
+		*NewScriptSample("script_status", "json", 0),
+		*NewScriptSample("script_success", "json", 1),
+		*NewJsonOutputSample("json", "foo", 42),
+		*NewJsonOutputSample("json", "bar", 2.71828),
 	}
 
-	for _, measurement := range measurements {
-		expectedResult, isExpected := expectedResults[measurement.Script.Name]
+	actualSamples := runScripts(scriptExporterTestConfig.Scripts)
 
-		if !isExpected {
-			t.Errorf("Got a measurement for an unexpected script: %s", measurement.Script.Name)
-			continue
-		}
-
-		if measurement.Success != expectedResult.success {
-			t.Errorf("Expected success %d != %d: %s", measurement.Success, expectedResult.success, measurement.Script.Name)
-		}
-
-		if measurement.Status != expectedResult.status {
-			t.Errorf("Expected status %d != %d: %s", measurement.Status, expectedResult.status, measurement.Script.Name)
-		}
-
-		if measurement.Duration < expectedResult.minDuration {
-			t.Errorf("Expected duration %f < %f: %s", measurement.Duration, expectedResult.minDuration, measurement.Script.Name)
-		}
-	}
+	testSamples(t, asserters, *actualSamples, expectedSamples)
 }
 
 func TestScriptFilter(t *testing.T) {
 	t.Run("RequiredParameters", func(t *testing.T) {
-		_, err := scriptFilter(config.Scripts, "", "")
+		_, err := scriptFilter(scriptExporterTestConfig.Scripts, "", "")
 
 		if err.Error() != "`name` or `pattern` required" {
 			t.Errorf("Expected failure when supplying no parameters")
@@ -61,44 +60,64 @@ func TestScriptFilter(t *testing.T) {
 	})
 
 	t.Run("NameMatch", func(t *testing.T) {
-		scripts, err := scriptFilter(config.Scripts, "success", "")
+		scripts, err := scriptFilter(scriptExporterTestConfig.Scripts, "success", "")
 
 		if err != nil {
 			t.Errorf("Unexpected: %s", err.Error())
 		}
 
-		if len(scripts) != 1 || scripts[0] != config.Scripts[0] {
+		if len(scripts) != 1 || scripts[0] != scriptExporterTestConfig.Scripts[0] {
 			t.Errorf("Expected script not found")
 		}
 	})
 
 	t.Run("PatternMatch", func(t *testing.T) {
-		scripts, err := scriptFilter(config.Scripts, "", "fail.*")
+		scripts, err := scriptFilter(scriptExporterTestConfig.Scripts, "", "fail.*")
 
 		if err != nil {
 			t.Errorf("Unexpected: %s", err.Error())
 		}
 
-		if len(scripts) != 1 || scripts[0] != config.Scripts[1] {
+		if len(scripts) != 1 || scripts[0] != scriptExporterTestConfig.Scripts[1] {
 			t.Errorf("Expected script not found")
 		}
 	})
 
 	t.Run("AllMatch", func(t *testing.T) {
-		scripts, err := scriptFilter(config.Scripts, "success", ".*")
+		scripts, err := scriptFilter(scriptExporterTestConfig.Scripts, "success", ".*")
 
 		if err != nil {
 			t.Errorf("Unexpected: %s", err.Error())
 		}
 
-		if len(scripts) != 3 {
-			t.Fatalf("Expected 3 scripts, received %d", len(scripts))
+		if len(scripts) != len(scriptExporterTestConfig.Scripts) {
+			t.Fatalf("Expected %d scripts, received %d", len(scriptExporterTestConfig.Scripts), len(scripts))
 		}
 
-		for i, script := range config.Scripts {
+		for i, script := range scriptExporterTestConfig.Scripts {
 			if scripts[i] != script {
 				t.Fatalf("Expected script not found")
 			}
 		}
 	})
+}
+
+func AssertDurationSamples(t *testing.T, actual, expected Sample) (done bool) {
+	if actual.Name != "script_duration_seconds" {
+		return false
+	}
+	if !expected.EqualNameAndLabels(actual) {
+		t.Errorf("Expected Sample '%s' but got '%s'", expected.StringNameAndLabels(), actual.StringNameAndLabels())
+	}
+	switch actual.Labels["script"] {
+	case "timeout":
+		if actual.Value < 0.9 || actual.Value > 1.4 {
+			t.Errorf("Expected duration to be between %f and %f, but got %f", 0.9, 1.4, actual.Value)
+		}
+	default:
+		if actual.Value < 0 || actual.Value > 0.5 {
+			t.Errorf("Expected duration to be between %f and %f, but got %f", 0.0, 0.5, actual.Value)
+		}
+	}
+	return true
 }

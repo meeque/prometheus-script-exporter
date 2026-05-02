@@ -1,17 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
+	"strings"
 	"time"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -32,82 +34,86 @@ type Config struct {
 }
 
 type Script struct {
-	Name    string `yaml:"name"`
-	Content string `yaml:"script"`
-	Timeout int64  `yaml:"timeout"`
+	Name    string     `yaml:"name"`
+	Content string     `yaml:"script"`
+	Timeout int64      `yaml:"timeout"`
+	Output  OutputType `yaml:"output,omitempty"`
 }
 
-type Measurement struct {
-	Script   *Script
-	Success  int
-	Status   int
-	Duration float64
-}
-
-func runScript(script *Script) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(script.Timeout)*time.Second)
+func executeScript(script *string, timeout int64, captureOutput bool) (stdout *bytes.Buffer, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	bashCmd := exec.CommandContext(ctx, *shell)
+	cmd := exec.CommandContext(ctx, *shell)
 
-	bashIn, err := bashCmd.StdinPipe()
+	cmd.Stdin = strings.NewReader(*script)
 
-	if err != nil {
-		return err
+	if captureOutput {
+		stdout = &bytes.Buffer{}
+		cmd.Stdout = stdout
 	}
 
-	if err = bashCmd.Start(); err != nil {
-		return err
+	if err = cmd.Start(); err != nil {
+		return
 	}
-
-	if _, err = bashIn.Write([]byte(script.Content)); err != nil {
-		return err
-	}
-
-	bashIn.Close()
-
-	return bashCmd.Wait()
+	err = cmd.Wait()
+	return
 }
 
-func runScripts(scripts []*Script) []*Measurement {
-	measurements := make([]*Measurement, 0)
+func runScript(script *Script) (samples *[]Sample) {
+	success := 0
+	status := -1
+	processOutput := processOutputByType[script.Output]
 
-	ch := make(chan *Measurement)
+	start := time.Now()
+	outBuffer, err := executeScript(&script.Content, script.Timeout, processOutput != nil)
+	duration := time.Since(start).Seconds()
+
+	if err == nil {
+		log.Debugf("OK: %s (after %fs).", script.Name, duration)
+		success = 1
+		status = 0
+	} else {
+		log.Infof("ERROR: %s: %s (failed after %fs).", script.Name, err, duration)
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			status = exitErr.ExitCode()
+		}
+	}
+
+	samples = &[]Sample{
+		*NewScriptSample("script_duration_seconds", script.Name, duration),
+		*NewScriptSample("script_status", script.Name, float64(status)),
+		*NewScriptSample("script_success", script.Name, float64(success)),
+	}
+
+	if processOutput != nil {
+		outputSamples, err := processOutput(script.Name, outBuffer)
+		if err != nil {
+			log.Infof("Silently ignoring error in %T: %s", processOutput, err)
+			return
+		}
+		*samples = append(*samples, *outputSamples...)
+	}
+
+	return
+}
+
+func runScripts(scripts []*Script) (samples *[]Sample) {
+
+	ch := make(chan []Sample, len(scripts))
 
 	for _, script := range scripts {
-		go func(script *Script) {
-			start := time.Now()
-			success := 0
-			status := -1
-			err := runScript(script)
-			duration := time.Since(start).Seconds()
-
-			if err == nil {
-				log.Debugf("OK: %s (after %fs).", script.Name, duration)
-				success = 1
-				status = 0
-			} else {
-				log.Infof("ERROR: %s: %s (failed after %fs).", script.Name, err, duration)
-				var exitErr *exec.ExitError
-				if errors.As(err, &exitErr) {
-					status = exitErr.ExitCode()
-				}
-			}
-
-			ch <- &Measurement{
-				Script:   script,
-				Duration: duration,
-				Success:  success,
-				Status:   status,
-			}
-		}(script)
+		go func() {
+			ch <- *runScript(script)
+		}()
 	}
 
-	for i := 0; i < len(scripts); i++ {
-		measurements = append(measurements, <-ch)
+	samples = &[]Sample{}
+	for range scripts {
+		*samples = append(*samples, <-ch...)
 	}
-
-	return measurements
+	return
 }
 
 func scriptFilter(scripts []*Script, name, pattern string) (filteredScripts []*Script, err error) {
@@ -147,12 +153,9 @@ func scriptRunHandler(w http.ResponseWriter, r *http.Request, config *Config) {
 		return
 	}
 
-	measurements := runScripts(scripts)
-
-	for _, measurement := range measurements {
-		fmt.Fprintf(w, "script_duration_seconds{script=\"%s\"} %f\n", measurement.Script.Name, measurement.Duration)
-		fmt.Fprintf(w, "script_status{script=\"%s\"} %d\n", measurement.Script.Name, measurement.Status)
-		fmt.Fprintf(w, "script_success{script=\"%s\"} %d\n", measurement.Script.Name, measurement.Success)
+	samples := runScripts(scripts)
+	for _, sample := range *samples {
+		fmt.Fprintln(w, sample.String())
 	}
 }
 
@@ -170,7 +173,7 @@ func main() {
 
 	log.Infoln("Starting script_exporter", version.Info())
 
-	yamlFile, err := ioutil.ReadFile(*configFile)
+	yamlFile, err := os.ReadFile(*configFile)
 
 	if err != nil {
 		log.Fatalf("Error reading config file: %s", err)
