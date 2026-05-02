@@ -47,7 +47,7 @@ func TestRunScripts(t *testing.T) {
 
 	actualSamples := runScripts(scriptExporterTestConfig.Scripts)
 
-	assertSamples(t, asserters, *actualSamples, expectedSamples)
+	testSamples(t, asserters, *actualSamples, expectedSamples)
 }
 
 func TestScriptFilter(t *testing.T) {

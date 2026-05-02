@@ -1,12 +1,28 @@
 package main
 
 import (
-	"maps"
 	"math"
 	"slices"
 	"strings"
 	"testing"
 )
+
+func TestSampleEqual(t *testing.T) {
+
+	testSamples1 := []Sample{
+		*NewSample("foo", map[string]string{}, 0),
+		*NewSample("bar", map[string]string{"a": "A", "b": "B"}, -0.7),
+		*NewScriptSample("test_metric", "test_script", math.NaN()),
+	}
+
+	testSamples2 := []Sample{
+		*NewSample("foo", map[string]string{}, 0.0),
+		*NewSample("bar", map[string]string{"b": "B", "a": "A"}, -0.7),
+		*NewSample("test_metric", map[string]string{"script": "test_script"}, math.NaN()),
+	}
+
+	testSamplesEqual(t, testSamples1, testSamples2)
+}
 
 func TestSampleString(t *testing.T) {
 
@@ -30,15 +46,6 @@ func TestSampleString(t *testing.T) {
 	}
 }
 
-func (s1 Sample) EqualNameAndLabels(s2 Sample) bool {
-	return s1.Name == s2.Name && maps.Equal(s1.Labels, s2.Labels)
-}
-
-func (s1 Sample) Equal(s2 Sample) bool {
-	return s1.EqualNameAndLabels(s1) &&
-		(s1.Value == s2.Value || (math.IsNaN(s1.Value) && math.IsNaN(s2.Value)))
-}
-
 type AssertSamples func(t *testing.T, actual, expected Sample) (done bool)
 
 func AssertSamplesEqual(t *testing.T, actual, expected Sample) (done bool) {
@@ -57,11 +64,11 @@ func sortSamples(samples []Sample) {
 	)
 }
 
-func assertSamplesEqual(t *testing.T, actuals []Sample, expecteds []Sample) {
-	assertSamples(t, []AssertSamples{AssertSamplesEqual}, actuals, expecteds)
+func testSamplesEqual(t *testing.T, actuals []Sample, expecteds []Sample) {
+	testSamples(t, []AssertSamples{AssertSamplesEqual}, actuals, expecteds)
 }
 
-func assertSamples(t *testing.T, asserters []AssertSamples, actuals []Sample, expecteds []Sample) {
+func testSamples(t *testing.T, asserters []AssertSamples, actuals []Sample, expecteds []Sample) {
 	if len(actuals) != len(expecteds) {
 		t.Errorf("Expected %d Samples, but got %d", len(expecteds), len(actuals))
 	}

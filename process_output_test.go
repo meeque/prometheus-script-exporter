@@ -282,7 +282,7 @@ func testProcessOutput(t *testing.T, processor ProcessOutput, testConfigs []Proc
 				if err != nil && testConfig.Samples == nil {
 					return
 				}
-				assertSamplesEqual(t, *samples, testConfig.Samples)
+				testSamplesEqual(t, *samples, testConfig.Samples)
 			},
 		)
 	}

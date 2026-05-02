@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"maps"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -25,6 +26,15 @@ func NewSample(name string, labels map[string]string, value float64) (sample *Sa
 func NewScriptSample(name string, script string, value float64) (sample *Sample) {
 	labels := map[string]string{"script": script}
 	return NewSample(name, labels, value)
+}
+
+func (s1 Sample) Equal(s2 Sample) bool {
+	return s1.EqualNameAndLabels(s1) &&
+		(s1.Value == s2.Value || (math.IsNaN(s1.Value) && math.IsNaN(s2.Value)))
+}
+
+func (s1 Sample) EqualNameAndLabels(s2 Sample) bool {
+	return s1.Name == s2.Name && maps.Equal(s1.Labels, s2.Labels)
 }
 
 func (s *Sample) String() string {
