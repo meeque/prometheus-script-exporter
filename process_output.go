@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
-
-	"github.com/prometheus/common/log"
 )
 
 const (
@@ -91,7 +90,7 @@ func (o *FlatJsonOutput) append(path string, value any) {
 	case float64:
 		(*o)[path] = value
 	default:
-		log.Debugf("WARN: Silently ignoring non-numeric JSON value at path '%s'", path)
+		log.Printf("WARN: Silently ignoring non-numeric JSON value at path '%s'", path)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -15,9 +16,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
 )
 
@@ -70,11 +69,11 @@ func runScript(script *Script) (samples *[]Sample) {
 	duration := time.Since(start).Seconds()
 
 	if err == nil {
-		log.Debugf("OK: %s (after %fs).", script.Name, duration)
+		log.Printf("OK: %s (after %fs).", script.Name, duration)
 		success = 1
 		status = 0
 	} else {
-		log.Infof("ERROR: %s: %s (failed after %fs).", script.Name, err, duration)
+		log.Printf("ERROR: %s: %s (failed after %fs).", script.Name, err, duration)
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			status = exitErr.ExitCode()
@@ -90,7 +89,7 @@ func runScript(script *Script) (samples *[]Sample) {
 	if processOutput != nil {
 		outputSamples, err := processOutput(script.Name, outBuffer)
 		if err != nil {
-			log.Infof("Silently ignoring error in %T: %s", processOutput, err)
+			log.Printf("Silently ignoring error in %T: %s", processOutput, err)
 			return
 		}
 		*samples = append(*samples, *outputSamples...)
@@ -159,10 +158,6 @@ func scriptRunHandler(w http.ResponseWriter, r *http.Request, config *Config) {
 	}
 }
 
-func init() {
-	prometheus.MustRegister(version.NewCollector("script_exporter"))
-}
-
 func main() {
 	flag.Parse()
 
@@ -171,7 +166,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	log.Infoln("Starting script_exporter", version.Info())
+	log.Println("Starting script_exporter", version.Info())
 
 	yamlFile, err := os.ReadFile(*configFile)
 
@@ -187,7 +182,7 @@ func main() {
 		log.Fatalf("Error parsing config file: %s", err)
 	}
 
-	log.Infof("Loaded %d script configurations", len(config.Scripts))
+	log.Printf("Loaded %d script configurations", len(config.Scripts))
 
 	for _, script := range config.Scripts {
 		if script.Timeout == 0 {
@@ -211,7 +206,7 @@ func main() {
 			</html>`))
 	})
 
-	log.Infoln("Listening on", *listenAddress)
+	log.Println("Listening on", *listenAddress)
 
 	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
 		log.Fatalf("Error starting HTTP server: %s", err)
