@@ -1,12 +1,21 @@
-# Script Exporter
+# Meeque's Fork of Prometheus Script Exporter
 
-GitHub: https://github.com/adhocteam/script_exporter
+This is a fork of the [official](https://prometheus.io/docs/instrumenting/exporters/) [Prometheus Script Exporter](https://github.com/adhocteam/script_exporter).
+It is intended for personal use, and may not be ready for general production use.
+That said, let me know if you want to use it and have improvement suggestions.
 
-Prometheus exporter written to execute and collect metrics on script exit status
-and duration. Designed to allow the execution of probes where support for the
-probe type wasn't easily configured with the Prometheus blackbox exporter.
+Like the original, this Prometheus exporter is written to execute and collect metrics on script execution.
+Unlike the original, it exposes the actual result status of the executed script, not just a boolean flag indicating success.
 
-Minimum supported Go Version: 1.13.1
+It also supports parsing the script outputs and export metrics based on this.
+For now, it supports the following ways of exporting metrics based on script outputs:
+
+1. Parse the complete output of the script as a `number` and export it as a single metric.
+2. Parse the output as `json` and export each numeric json value as a distinct metris.
+
+It only processes outputs of scripts that are configured for it, see config samples below.
+
+Recommended Go Version: 1.24.4 or higher
 
 ## Sample Configuration
 
@@ -21,6 +30,15 @@ scripts:
   - name: timeout
     script: sleep 5
     timeout: 1
+
+  - name: 'number'
+    script: echo 23
+    output: number
+
+  - name: 'json'
+    script: |
+      echo '{"foo": 42, "bar": 2.71828}'
+    output: json
 ```
 
 ## Running
@@ -30,7 +48,7 @@ You can run via docker with:
 ```
 docker run -d -p 9172:9172 --name script-exporter \
   -v `pwd`/script-exporter.yml:/etc/script-exporter/config.yml:ro \
-  adhocteam/script-exporter:master \
+  meeque/script-exporter:latest \
   -config.file=/etc/script-exporter/config.yml \
   -web.listen-address=":9172" \
   -web.telemetry-path="/metrics" \
