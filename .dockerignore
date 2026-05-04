@@ -1,4 +1,10 @@
-.build/
-.tarballs/
+.*
+*~
+__*
 
-!.build/linux-amd64
+!/.promu.yml
+
+*_test.go
+
+/.build/
+/.tarballs/
