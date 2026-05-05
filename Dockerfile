@@ -19,6 +19,6 @@ RUN apk add --no-cache bash skopeo jq
 COPY --from=build-env /go/script_exporter/script_exporter /bin/script-exporter
 COPY script-exporter.yml /etc/script-exporter/config.yml
 
-EXPOSE      9172
-ENTRYPOINT  [ "/bin/script-exporter" ]
-CMD ["-config.file=/etc/script-exporter/config.yml"]
+EXPOSE 9172
+ENTRYPOINT [ "/bin/script-exporter" ]
+CMD [ "-config.file=/etc/script-exporter/config.yml" ]
