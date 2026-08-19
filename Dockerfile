@@ -1,4 +1,4 @@
-FROM golang@sha256:3ad57304ad93bbec8548a0437ad9e06a455660655d9af011d58b993f6f615648 AS build-env
+FROM golang@sha256:70b46548e42db77e0966aaf3619fd068734dc6c77584d526b91126504fd95816 AS build-env
 
 RUN apk add --update git gcc libc-dev
 
