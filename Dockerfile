@@ -1,4 +1,4 @@
-FROM golang@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb AS build-env
+FROM golang@sha256:dbaa054703263d06c8b49576667418473b6231f8c0fa69dee103207fdb8e3654 AS build-env
 
 RUN apk add --update git gcc libc-dev
 
@@ -10,7 +10,7 @@ RUN go build
 
 
 
-FROM alpine@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+FROM alpine@sha256:3f4d6b32e26703c6082839234f43769d5046b3ac7c910033911d1e71d8cd630a
 
 LABEL upstream="https://github.com/meeque/prometheus-script-exporter"
 
